@@ -1,5 +1,5 @@
 // src/components/job/JobDetails.tsx
-import { useStore } from 'amos/store';
+import { useStore } from 'src/store';
 
 export function JobDetails() {
   const jobData = useStore((state) => state.job);

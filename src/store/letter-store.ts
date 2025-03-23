@@ -1,7 +1,7 @@
 // src/store/letter-store.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { LetterStore } from 'amos/types/letter.types';
+import { LetterStore } from 'src/types/letter.types';
 
 const initialState: Omit<LetterStore, 'setLetterContent' | 'updateLetterContent' | 'reset'> = {
   content: null,

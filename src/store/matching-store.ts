@@ -1,7 +1,7 @@
 // src/store/matching-store.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { MatchingStore } from 'amos/types/matching.types';
+import { MatchingStore } from 'src/types/matching.types';
 
 const initialState: Omit<MatchingStore, 'setMatchingData' | 'reset'> = {
   analyzed: false,

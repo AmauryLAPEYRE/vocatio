@@ -1,5 +1,5 @@
 // src/pages/index.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { Stepper } from '@/components/common/Stepper';
 import { CVUploader } from '@/components/cv/CVUploader';
@@ -8,7 +8,7 @@ import { MatchAnalysis } from '@/components/matcher/MatchAnalysis';
 import { CVOptimizer } from '@/components/cv/CVOptimizer';
 import { LetterGenerator } from '@/components/letter/LetterGenerator';
 import { DocumentsExporter } from '@/components/export/DocumentsExporter';
-import { useStore } from '@/store';
+import { useStore, useCVStore, useJobStore, useMatchingStore, useLetterStore } from '@/store';
 
 // Définition des étapes du flux utilisateur
 const STEPS = [
@@ -22,15 +22,25 @@ const STEPS = [
 
 export default function Home() {
   const [currentStep, setCurrentStep] = useState(0);
-  const { hasCV, hasJobOffer, hasAnalysis, hasOptimizedCV, hasCoverLetter } = useStore(
-    (state) => ({
-      hasCV: state.cv.originalContent !== null,
-      hasJobOffer: state.job.content !== null,
-      hasAnalysis: state.matching.analyzed,
-      hasOptimizedCV: state.cv.optimizedContent !== null,
-      hasCoverLetter: state.letter.content !== null,
-    })
-  );
+  
+  // Utiliser le store combiné pour obtenir les états dérivés
+  const { hasCV, hasJobOffer, hasAnalysis, hasOptimizedCV, hasCoverLetter } = useStore();
+  
+  // Initialiser les états dérivés côté client uniquement
+  useEffect(() => {
+    const cvState = useCVStore.getState();
+    const jobState = useJobStore.getState();
+    const matchingState = useMatchingStore.getState();
+    const letterState = useLetterStore.getState();
+    
+    useStore.setState({
+      hasCV: cvState.originalContent !== null,
+      hasJobOffer: jobState.content !== null,
+      hasAnalysis: matchingState.analyzed,
+      hasOptimizedCV: cvState.optimizedContent !== null,
+      hasCoverLetter: letterState.content !== null
+    });
+  }, []);
 
   // Vérifie si l'utilisateur peut passer à l'étape suivante
   const canProceed = () => {

@@ -1,7 +1,7 @@
 // src/store/job-store.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { JobStore } from 'amos/types/job.types';
+import { JobStore } from 'src/types/job.types';
 
 const initialState: Omit<JobStore, 'setJobData' | 'setJobSkills' | 'setJobRequirements' | 'reset'> = {
   content: null,

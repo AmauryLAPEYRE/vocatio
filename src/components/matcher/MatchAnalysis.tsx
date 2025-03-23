@@ -1,9 +1,9 @@
 // src/components/matcher/MatchAnalysis.tsx
 import { useState, useEffect } from 'react';
-import { useClaudeAPI } from 'amos/lib/api/claude';
-import { useStore } from 'amos/store';
-import { Loader } from 'amos/components/common/Loader';
-import { SkillBadge } from 'amos/components/common/SkillBadge';
+import { useClaudeAPI } from 'src/lib/api/claude';
+import { useStore } from 'src/store';
+import { Loader } from 'src/components/common/Loader';
+import { SkillBadge } from 'src/components/common/SkillBadge';
 
 interface MatchAnalysisProps {
   onComplete: () => void;

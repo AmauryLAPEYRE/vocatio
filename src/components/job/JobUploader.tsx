@@ -1,10 +1,10 @@
 // src/components/job/JobUploader.tsx
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { useClaudeAPI } from 'amos/lib/api/claude';
-import { useStore } from 'amos/store';
-import { Loader } from 'amos/components/common/Loader';
-import { processDocument } from 'amos/lib/document-processing/document-processor';
+import { useClaudeAPI } from 'src/lib/api/claude';
+import { useStore } from 'src/store';
+import { Loader } from 'src/components/common/Loader';
+import { processDocument } from 'src/lib/document-processing/document-processor';
 
 interface JobUploaderProps {
   onComplete: () => void;

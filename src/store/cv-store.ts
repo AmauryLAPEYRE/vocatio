@@ -1,7 +1,7 @@
 // src/store/cv-store.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { CVStore } from 'amos/types/cv.types';
+import { CVStore } from 'src/types/cv.types';
 
 const initialState: Omit<CVStore, 'setOriginalCV' | 'setOptimizedCV' | 'reset'> = {
   originalContent: null,

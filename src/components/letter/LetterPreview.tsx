@@ -1,5 +1,5 @@
 // src/components/letter/LetterPreview.tsx
-import { useStore } from 'amos/store';
+import { useStore } from 'src/store';
 
 export function LetterPreview() {
   const letterData = useStore((state) => state.letter.content);

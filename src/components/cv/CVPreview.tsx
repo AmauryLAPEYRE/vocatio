@@ -1,5 +1,5 @@
 // src/components/cv/CVPreview.tsx
-import { useStore } from 'amos/store';
+import { useStore } from 'src/store';
 
 export function CVPreview() {
   const cv = useStore((state) => state.cv.originalContent);

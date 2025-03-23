@@ -1,9 +1,10 @@
 // src/components/cv/CVUploader.tsx
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { processDocument } from 'amos/lib/document-processing/document-processor';
-import { useStore } from 'amos/store';
-import { Loader } from 'amos/components/common/Loader';
+import { processDocument } from 'src/lib/document-processing/document-processor';
+import { useStore } from 'src/store';
+import { Loader } from 'src/components/common/Loader';
+import { useCVStore } from 'src/store';
 
 interface CVUploaderProps {
   onComplete: () => void;

@@ -1,5 +1,5 @@
 // src/types/cv.types.ts
-import { DocumentInfo } from 'amos/lib/document-processing/document-processor';
+import { DocumentInfo } from 'src/lib/document-processing/document-processor';
 
 export interface CVData {
   originalContent: DocumentInfo | null;
