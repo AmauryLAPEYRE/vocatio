@@ -6,6 +6,7 @@ import { CVPreview } from 'src/components/cv/CVPreview';
 import { LetterPreview } from 'src/components/letter/LetterPreview';
 import { Loader } from 'src/components/common/Loader';
 import { Button } from 'src/components/common/Button';
+import { HTMLtoPDFExporter } from 'src/lib/document-processing/html-to-pdf';
 
 /**
  * Composant pour l'exportation des documents finalisés (CV optimisé et lettre de motivation)
@@ -18,7 +19,7 @@ export function DocumentsExporter() {
   
   // Récupérer les données des stores
   const {
-    cv: { optimizedContent: optimizedCV, fileName: cvFileName },
+    cv: { optimizedContent: optimizedCV, fileName: cvFileName, template: cvTemplate },
     job: { companyName, jobTitle },
     letter: { content: letterContent }
   } = useStore();
@@ -37,29 +38,66 @@ export function DocumentsExporter() {
     setSuccess(null);
     
     try {
-      // Créer un nouveau document PDF (A4)
-      const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-      
-      // Configuration du texte
-      doc.setFont('Helvetica');
-      doc.setFontSize(11);
-      
-      // Ajouter le texte du CV
-      const splitText = doc.splitTextToSize(optimizedCV.text, 180);
-      doc.text(splitText, 15, 20);
-      
-      // Générer un nom de fichier
-      const companyText = companyName ? `-${companyName.replace(/\s+/g, '-')}` : '';
-      const exportFileName = `CV-optimise${companyText}.pdf`;
-      
-      // Télécharger le PDF
-      doc.save(exportFileName);
-      
-      setSuccess('CV exporté avec succès !');
+      // Vérifier si nous avons un CV optimisé avec HTML préservant le format
+      if (optimizedCV.formattedHTML) {
+        // Utiliser le HTML pour générer un PDF qui préserve exactement le format
+        console.log("Export CV avec format préservé (HTML)");
+        
+        // Récupérer les dimensions de page du template
+        const pageSize = cvTemplate?.pages[0] ? {
+          width: cvTemplate.pages[0].width,
+          height: cvTemplate.pages[0].height
+        } : undefined;
+        
+        // Générer le PDF à partir du HTML
+        const pdfBlob = await HTMLtoPDFExporter.exportHTML(optimizedCV.formattedHTML, {
+          pageSize,
+          margin: { top: 0, right: 0, bottom: 0, left: 0 }
+        });
+        
+        // Génération du nom de fichier
+        const companyText = companyName ? `-${companyName.replace(/\s+/g, '-')}` : '';
+        const exportFileName = `CV-optimise${companyText}.pdf`;
+        
+        // Télécharger le PDF
+        const url = URL.createObjectURL(pdfBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = exportFileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        setSuccess('CV exporté avec succès avec préservation exacte du format !');
+      } else {
+        // Méthode traditionnelle si le HTML n'est pas disponible
+        console.log("Export CV traditionnel (texte uniquement)");
+        
+        // Créer un nouveau document PDF (A4)
+        const doc = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
+        
+        // Configuration du texte
+        doc.setFont('Helvetica');
+        doc.setFontSize(11);
+        
+        // Ajouter le texte du CV
+        const splitText = doc.splitTextToSize(optimizedCV.text, 180);
+        doc.text(splitText, 15, 20);
+        
+        // Génération du nom de fichier
+        const companyText = companyName ? `-${companyName.replace(/\s+/g, '-')}` : '';
+        const exportFileName = `CV-optimise${companyText}.pdf`;
+        
+        // Télécharger le PDF
+        doc.save(exportFileName);
+        
+        setSuccess('CV exporté avec succès !');
+      }
     } catch (err) {
       console.error('Erreur lors de l\'exportation du CV:', err);
       setError('Une erreur est survenue lors de l\'exportation du CV. Veuillez réessayer.');
@@ -133,7 +171,7 @@ export function DocumentsExporter() {
       // Signature
       doc.text('Votre Nom', 20, lastLineY + 25);
       
-      // Générer un nom de fichier
+      // Génération du nom de fichier
       const companyText = companyName ? `-${companyName.replace(/\s+/g, '-')}` : '';
       const jobText = jobTitle ? `-${jobTitle.replace(/\s+/g, '-')}` : '';
       const exportFileName = `Lettre-de-motivation${jobText}${companyText}.pdf`;
@@ -179,8 +217,27 @@ export function DocumentsExporter() {
     }
   };
   
+  /**
+   * Permet d'imprimer directement le CV (pour une meilleure fidélité)
+   */
+  const printCV = async () => {
+    if (!optimizedCV || !optimizedCV.formattedHTML) {
+      setError('Aucun CV optimisé disponible pour impression.');
+      return;
+    }
+    
+    try {
+      await HTMLtoPDFExporter.printHTML(optimizedCV.formattedHTML);
+      setSuccess('CV envoyé à l\'impression !');
+    } catch (err) {
+      console.error('Erreur lors de l\'impression du CV:', err);
+      setError('Une erreur est survenue lors de l\'impression du CV.');
+    }
+  };
+  
   // Vérifier si les documents sont disponibles
   const hasOptimizedCV = !!optimizedCV;
+  const hasFormattedCV = !!optimizedCV?.formattedHTML;
   const hasLetter = !!letterContent;
   
   return (
@@ -199,16 +256,31 @@ export function DocumentsExporter() {
           {hasOptimizedCV ? (
             <>
               <div className="border rounded-md shadow-sm overflow-hidden">
-                <div className="bg-gray-100 px-4 py-3 border-b">
-                  <h4 className="font-medium">Aperçu du CV</h4>
-                </div>
-                <div className="p-4 max-h-96 overflow-y-auto">
-                  <div className="whitespace-pre-line">
-                    {optimizedCV.text}
+                {hasFormattedCV ? (
+                  <div className="bg-gray-100 px-4 py-3 border-b">
+                    <h4 className="font-medium">Aperçu du CV (format préservé)</h4>
                   </div>
+                ) : (
+                  <div className="bg-gray-100 px-4 py-3 border-b">
+                    <h4 className="font-medium">Aperçu du CV</h4>
+                  </div>
+                )}
+                <div className="p-4 max-h-96 overflow-y-auto">
+                  {hasFormattedCV ? (
+                    <iframe 
+                      srcDoc={optimizedCV.formattedHTML}
+                      title="CV optimisé"
+                      className="w-full border h-96"
+                      sandbox="allow-same-origin"
+                    />
+                  ) : (
+                    <div className="whitespace-pre-line">
+                      {optimizedCV.text}
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="flex justify-center">
+              <div className="flex justify-center space-x-2">
                 <Button
                   onClick={exportCV}
                   isLoading={exportingCV}
@@ -220,6 +292,20 @@ export function DocumentsExporter() {
                 >
                   Exporter le CV en PDF
                 </Button>
+                
+                {hasFormattedCV && (
+                  <Button
+                    onClick={printCV}
+                    variant="outline"
+                    icon={(
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                      </svg>
+                    )}
+                  >
+                    Imprimer
+                  </Button>
+                )}
               </div>
             </>
           ) : (
@@ -310,7 +396,7 @@ export function DocumentsExporter() {
         <ul className="text-sm text-gray-600 space-y-1">
           <li>• Personnalisez vos coordonnées dans les documents avant de les envoyer</li>
           <li>• Relisez attentivement le CV et la lettre pour vérifier toutes les informations</li>
-          <li>• Adaptez les documents si nécessaire pour refléter votre style personnel</li>
+          <li>• Pour le CV, utilisez l'option d'impression pour une fidélité parfaite si disponible</li>
           <li>• Envoyez vos candidatures depuis une adresse email professionnelle</li>
           <li>• Suivez vos candidatures une semaine après l'envoi si vous n'avez pas de réponse</li>
         </ul>

@@ -12,6 +12,10 @@ export interface CVData {
       output: number;
       total: number;
     };
+    // Nouveaux champs pour le format préservé
+    formattedHTML?: string;
+    template?: any;
+    optimizedSections?: Record<string, string>;
   } | null;
   fileName: string | null;
   fileType: string | null;
@@ -29,6 +33,10 @@ export interface CVStore {
       output: number;
       total: number;
     };
+    // Nouveaux champs pour le format préservé
+    formattedHTML?: string;
+    template?: any;
+    optimizedSections?: Record<string, string>;
   } | null;
   fileName: string | null;
   fileType: string | null;

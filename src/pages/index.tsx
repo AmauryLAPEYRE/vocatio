@@ -5,7 +5,7 @@ import { Stepper } from '@/components/common/Stepper';
 import { CVUploader } from '@/components/cv/CVUploader';
 import { JobUploader } from '@/components/job/JobUploader';
 import { MatchAnalysis } from '@/components/matcher/MatchAnalysis';
-import { CVOptimizer } from '@/components/cv/CVOptimizer';
+import { HTMLBasedCVOptimizer } from '@/components/cv/HTMLBasedCVOptimizer'; // Nouveau composant
 import { LetterGenerator } from '@/components/letter/LetterGenerator';
 import { DocumentsExporter } from '@/components/export/DocumentsExporter';
 import { useStore, useCVStore, useJobStore, useMatchingStore, useLetterStore } from '@/store';
@@ -77,7 +77,8 @@ export default function Home() {
       case 2:
         return <MatchAnalysis onComplete={goToNextStep} />;
       case 3:
-        return <CVOptimizer onComplete={goToNextStep} />;
+        // Utiliser le nouveau optimiseur qui préserve le format
+        return <HTMLBasedCVOptimizer onComplete={goToNextStep} />;
       case 4:
         return <LetterGenerator onComplete={goToNextStep} />;
       case 5:
@@ -91,14 +92,14 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
       <Head>
         <title>Vocatio - Optimisez votre CV et lettres de motivation</title>
-        <meta name="description" content="Application d'optimisation de CV et génération de lettres de motivation personnalisées" />
+        <meta name="description" content="Optimisez votre CV tout en préservant exactement son format visuel et créez des lettres de motivation personnalisées" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
       <main className="container mx-auto px-4 py-8 max-w-5xl">
         <header className="mb-8 text-center">
           <h1 className="text-4xl font-bold text-blue-700 mb-2">Vocatio</h1>
-          <p className="text-gray-600">Optimisez votre CV et créez des lettres de motivation personnalisées</p>
+          <p className="text-gray-600">Optimisez votre CV en préservant sa mise en page et créez des lettres de motivation ciblées</p>
         </header>
 
         <Stepper steps={STEPS} currentStep={currentStep} onChange={setCurrentStep} />

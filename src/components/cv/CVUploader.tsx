@@ -23,7 +23,9 @@ export function CVUploader({ onComplete }: CVUploaderProps) {
     // Vérifier le type de fichier
     const fileType = file.type;
     const isValidType = fileType === 'application/pdf' || 
-                        fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+                        fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+                        file.name.endsWith('.pdf') || 
+                        file.name.endsWith('.docx');
     
     if (!isValidType) {
       setError('Format de fichier non supporté. Veuillez télécharger un fichier PDF ou DOCX.');
