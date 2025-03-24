@@ -16,7 +16,6 @@ export function Loader({ text, size = 'medium' }: LoaderProps) {
   
   return (
     <div className="flex flex-col items-center">
-      // src/components/common/Loader.tsx
       <div className={`animate-spin rounded-full border-t-2 border-blue-500 border-opacity-50 border-r-2 border-b-2 ${sizeClass}`} role="status" />
       {text && <p className="mt-3 text-gray-600 text-sm">{text}</p>}
     </div>

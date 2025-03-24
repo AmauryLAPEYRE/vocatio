@@ -21,7 +21,7 @@ interface ClaudeAPIResponse {
 }
 
 export function useClaudeAPI({ 
-  model = 'claude-3-5-sonnet-20240307', 
+  model = 'claude-3-7-sonnet-20250219', 
   temperature = 0.7, 
   maxTokens = 4000,
   systemPrompt

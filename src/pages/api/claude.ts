@@ -58,7 +58,7 @@ export default async function handler(req: NextRequest) {
     
     // Configurer la requête vers l'API Claude
     const claudeRequest: ClaudeRequest = {
-      model: requestBody.model || 'claude-3-5-sonnet-20240307',
+      model: requestBody.model || 'claude-3-7-sonnet-20250219',
       messages: requestBody.messages,
       temperature: requestBody.temperature || 0.7,
       max_tokens: requestBody.max_tokens || 4000,
