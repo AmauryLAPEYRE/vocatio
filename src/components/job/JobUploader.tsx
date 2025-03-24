@@ -2,7 +2,7 @@
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useClaudeAPI } from 'src/lib/api/claude';
-import { useStore } from 'src/store';
+import { useStore, useJobStore } from 'src/store';
 import { Loader } from 'src/components/common/Loader';
 import { processDocument } from 'src/lib/document-processing/document-processor';
 
@@ -37,9 +37,10 @@ export function JobUploader({ onComplete }: JobUploaderProps) {
     `
   });
   
-  const setJobData = useStore((state) => state.job.setJobData);
-  const setJobSkills = useStore((state) => state.job.setJobSkills);
-  const setJobRequirements = useStore((state) => state.job.setJobRequirements);
+  // Utiliser le store spécifique pour les actions
+  const setJobData = useJobStore((state) => state.setJobData);
+  const setJobSkills = useJobStore((state) => state.setJobSkills);
+  const setJobRequirements = useJobStore((state) => state.setJobRequirements);
   
   // Gestionnaire pour l'import de fichier
   const onDrop = useCallback(async (acceptedFiles: File[]) => {

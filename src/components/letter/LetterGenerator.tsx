@@ -1,7 +1,7 @@
 // src/components/letter/LetterGenerator.tsx
 import { useState, useEffect } from 'react';
 import { useClaudeAPI } from 'src/lib/api/claude';
-import { useStore } from 'src/store';
+import { useStore, useLetterStore } from 'src/store';
 import { Loader } from 'src/components/common/Loader';
 
 // Styles d'écriture disponibles pour les lettres de motivation
@@ -47,7 +47,7 @@ export function LetterGenerator({ onComplete }: LetterGeneratorProps) {
       Ta réponse doit contenir uniquement le texte de la lettre de motivation, sans introduction ni conclusion.
     `
   });
-  2
+  
   const { 
     originalContent: cvData,
     optimizedContent: optimizedCV
@@ -59,17 +59,18 @@ export function LetterGenerator({ onComplete }: LetterGeneratorProps) {
     jobTitle
   } = useStore((state) => state.job);
   
-  const { 
-    setLetterContent,
-    content: existingLetter
-  } = useStore((state) => state.letter);
+  // Utiliser directement useLetterStore pour les actions
+  const setLetterContent = useLetterStore((state) => state.setLetterContent);
+  
+  // Continuer à utiliser useStore pour les données en lecture seule
+  const content = useStore((state) => state.letter.content);
   
   // Génération automatique d'une première lettre
   useEffect(() => {
-    if (!existingLetter && cvData && jobData && optimizedCV && !generating) {
+    if (!content && cvData && jobData && optimizedCV && !generating) {
       generateLetter();
     }
-  }, [existingLetter, cvData, jobData, optimizedCV, generating]);
+  }, [content, cvData, jobData, optimizedCV, generating]);
   
   // Gestion des changements dans les personnalisations
   const handleCustomizationChange = (key: keyof typeof customizations) => {
@@ -172,22 +173,22 @@ export function LetterGenerator({ onComplete }: LetterGeneratorProps) {
         </p>
       </div>
       
-      {(loading || generating) && !existingLetter ? (
+      {(loading || generating) && !content ? (
         <div className="text-center py-12">
           <Loader text="Génération de votre lettre en cours... Cela peut prendre quelques instants." />
         </div>
       ) : (
         <div className="space-y-6">
-          {existingLetter && (
+          {content && (
             <div className="border rounded-md overflow-hidden">
               <div className="bg-gray-100 px-4 py-3 border-b flex justify-between items-center">
                 <h3 className="font-medium">Lettre de motivation</h3>
                 <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                  Style: {WRITING_STYLES.find(style => style.id === existingLetter.style)?.label || 'Personnalisé'}
+                  Style: {WRITING_STYLES.find(style => style.id === selectedStyle)?.label || 'Personnalisé'}
                 </span>
               </div>
               <div className="p-6 whitespace-pre-line">
-                {existingLetter.content}
+                {content}
               </div>
             </div>
           )}
@@ -244,7 +245,7 @@ export function LetterGenerator({ onComplete }: LetterGeneratorProps) {
             </div>
             
             <div className="md:col-span-2">
-              {existingLetter ? (
+              {content ? (
                 <div className="bg-gray-50 p-4 rounded-md space-y-4">
                   <h3 className="font-medium">Modifier votre lettre</h3>
                   <p className="text-sm text-gray-600">

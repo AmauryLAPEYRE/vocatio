@@ -2,10 +2,10 @@
 import { useStore } from 'src/store';
 
 export function LetterPreview() {
-  const letterData = useStore((state) => state.letter.content);
+  const letterContent = useStore((state) => state.letter.content);
   const jobData = useStore((state) => state.job);
   
-  if (!letterData) {
+  if (!letterContent) {
     return (
       <div className="text-center p-8 bg-gray-50 rounded-md">
         <p className="text-gray-500">Aucune lettre de motivation à afficher. Veuillez d'abord générer une lettre.</p>
@@ -45,7 +45,7 @@ export function LetterPreview() {
       </div>
       
       <div className="whitespace-pre-line mb-8">
-        {letterData.content}
+        {letterContent}
       </div>
       
       <div>

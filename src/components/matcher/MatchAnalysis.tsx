@@ -1,7 +1,7 @@
 // src/components/matcher/MatchAnalysis.tsx
 import { useState, useEffect } from 'react';
 import { useClaudeAPI } from 'src/lib/api/claude';
-import { useStore } from 'src/store';
+import { useStore, useMatchingStore } from 'src/store';
 import { Loader } from 'src/components/common/Loader';
 import { SkillBadge } from 'src/components/common/SkillBadge';
 
@@ -30,8 +30,10 @@ export function MatchAnalysis({ onComplete }: MatchAnalysisProps) {
     `
   });
   
+  // Extraire à la fois le contenu du CV et le nom du fichier
   const { 
-    originalContent: cvData
+    originalContent: cvData,
+    fileName: cvFileName
   } = useStore((state) => state.cv);
   
   const { 
@@ -40,13 +42,16 @@ export function MatchAnalysis({ onComplete }: MatchAnalysisProps) {
     jobTitle
   } = useStore((state) => state.job);
   
+  // Utiliser useStore pour les données en lecture seule
   const {
     analyzed,
     matchingScore,
     analysis,
     matchedSkills,
-    setMatchingData
   } = useStore((state) => state.matching);
+  
+  // Utiliser useMatchingStore pour les actions
+  const setMatchingData = useMatchingStore((state) => state.setMatchingData);
   
   // Lancer l'analyse automatiquement au chargement du composant
   useEffect(() => {
@@ -309,7 +314,7 @@ export function MatchAnalysis({ onComplete }: MatchAnalysisProps) {
           <div className="grid md:grid-cols-2 gap-6">
             <div className="bg-gray-50 p-4 rounded-md">
               <h3 className="font-medium text-gray-800 mb-2">CV analysé</h3>
-              <p className="text-sm text-gray-600">{fileName || 'CV'}</p>
+              <p className="text-sm text-gray-600">{cvFileName || 'CV'}</p>
               <p className="text-xs text-gray-500 mt-1">
                 {cvData.text.length} caractères • {cvData.text.split(/\s+/).length} mots
               </p>

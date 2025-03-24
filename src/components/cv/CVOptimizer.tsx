@@ -1,7 +1,7 @@
 // src/components/cv/CVOptimizer.tsx
 import { useState, useEffect } from 'react';
 import { useClaudeAPI } from 'src/lib/api/claude';
-import { useStore } from 'src/store';
+import { useStore, useCVStore } from 'src/store';
 import { Loader } from 'src/components/common/Loader';
 import { CVPreview } from './CVPreview';
 
@@ -33,11 +33,14 @@ export function CVOptimizer({ onComplete }: CVOptimizerProps) {
     `
   });
   
+  // Utiliser useStore pour les données en lecture seule
   const { 
     originalContent: cvData, 
     optimizedContent: optimizedCV,
-    setOptimizedCV 
   } = useStore((state) => state.cv);
+  
+  // Utiliser useCVStore pour les actions de mise à jour
+  const setOptimizedCV = useCVStore((state) => state.setOptimizedCV);
   
   const { 
     content: jobData, 

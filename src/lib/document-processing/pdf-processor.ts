@@ -1,6 +1,35 @@
 // src/lib/document-processing/pdf-processor.ts
 import * as pdfjs from 'pdfjs-dist';
 
+// Définir les interfaces manuellement si elles ne sont pas correctement exportées
+interface TextItem {
+  str: string;
+  dir?: string;
+  width?: number;
+  height?: number;
+  hasEOL?: boolean;
+  transform: number[];
+  fontName?: string;
+  [key: string]: any; // Pour d'autres propriétés potentielles
+}
+
+interface TextMarkedContent {
+  type: string;
+  items: any[];
+  [key: string]: any;
+}
+
+// Interface pour les métadonnées PDF
+interface PDFMetadataInfo {
+  Title?: string;
+  Author?: string;
+  CreationDate?: string;
+  [key: string]: any;
+}
+
+// Type union pour les éléments de contenu texte
+type TextContent = TextItem | TextMarkedContent;
+
 // Configurer le worker pour qu'il pointe vers le fichier dans le dossier public
 if (typeof window !== 'undefined') {
   pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.js';
@@ -41,6 +70,7 @@ export async function processPDFDocument(file: File): Promise<PDFDocumentInfo> {
     
     // Extraire les métadonnées
     const metadata = await pdfDocument.getMetadata();
+    const metadataInfo = metadata.info as PDFMetadataInfo || {};
     
     // Extraire le texte de chaque page
     let fullText = '';
@@ -54,36 +84,42 @@ export async function processPDFDocument(file: File): Promise<PDFDocumentInfo> {
       
       // Extraction du texte de la page
       const pageText = textContent.items
-        .filter((item): item is pdfjs.TextItem => 'str' in item)
-        .map(item => item.str)
+        // Utiliser une approche plus directe pour le filtrage
+        .filter(item => 'str' in item)
+        .map(item => (item as TextItem).str)
         .join(' ');
       
       fullText += pageText + '\n';
       
       // Analyse simple de la structure (sections basées sur la taille de police)
       const fontSizes = textContent.items
-        .filter((item): item is pdfjs.TextItem => 'str' in item && 'transform' in item)
-        .map(item => ({ 
-          text: item.str, 
-          fontSize: Math.sqrt(Math.pow(item.transform[0], 2) + Math.pow(item.transform[1], 2)),
-          fontName: item.fontName 
-        }));
+        .filter(item => 'str' in item && 'transform' in item)
+        .map(item => {
+          const textItem = item as TextItem;
+          return {
+            text: textItem.str,
+            fontSize: Math.sqrt(Math.pow(textItem.transform[0], 2) + Math.pow(textItem.transform[1], 2)),
+            fontName: textItem.fontName
+          };
+        });
       
       // Détecter les titres potentiels (texte avec une police plus grande)
-      const avgFontSize = fontSizes.reduce((sum, item) => sum + item.fontSize, 0) / fontSizes.length;
-      const titles = fontSizes.filter(item => 
-        item.fontSize > avgFontSize * 1.2 && 
-        item.text.trim().length > 0 &&
-        !/^[.,;:]/.test(item.text)  // Éviter les ponctuations
-      );
-      
-      // Ajouter les sections détectées
-      titles.forEach(title => {
-        sections.push({
-          title: title.text,
-          content: pageText  // Pour simplifier, on associe le texte de la page entière
+      if (fontSizes.length > 0) {
+        const avgFontSize = fontSizes.reduce((sum, item) => sum + item.fontSize, 0) / fontSizes.length;
+        const titles = fontSizes.filter(item => 
+          item.fontSize > avgFontSize * 1.2 && 
+          item.text.trim().length > 0 &&
+          !/^[.,;:]/.test(item.text)  // Éviter les ponctuations
+        );
+        
+        // Ajouter les sections détectées
+        titles.forEach(title => {
+          sections.push({
+            title: title.text,
+            content: pageText  // Pour simplifier, on associe le texte de la page entière
+          });
         });
-      });
+      }
       
       // Extraire des mots-clés potentiels
       const pageWords = pageText.toLowerCase()
@@ -120,10 +156,10 @@ export async function processPDFDocument(file: File): Promise<PDFDocumentInfo> {
     const documentInfo: PDFDocumentInfo = {
       text: fullText,
       metadata: {
-        title: metadata.info?.Title,
-        author: metadata.info?.Author,
-        creationDate: metadata.info?.CreationDate 
-          ? new Date(metadata.info.CreationDate) 
+        title: metadataInfo.Title,
+        author: metadataInfo.Author,
+        creationDate: metadataInfo.CreationDate 
+          ? new Date(metadataInfo.CreationDate) 
           : undefined,
         pageCount,
         format: 'pdf'
