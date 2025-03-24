@@ -1,45 +1,35 @@
 {
-    "name": "vocatio",
+    "name": "vocatio-2.0",
     "version": "1.0.0",
     "private": true,
     "scripts": {
-        "dev": "next dev",
-        "build": "next build",
-        "start": "next start",
-        "lint": "next lint",
-        "test": "jest",
-        "test:watch": "jest --watch"
+      "dev": "next dev",
+      "build": "next build",
+      "start": "next start",
+      "lint": "next lint"
     },
     "dependencies": {
-        "@tailwindcss/forms": "^0.5.7",
-        "@tailwindcss/typography": "^0.5.10",
-        "critters": "^0.0.25",
-        "html2canvas": "^1.4.1",
-        "jspdf": "^2.5.2",
-        "mammoth": "^1.9.0",
-        "next": "^14.0.4",
-        "pdfjs-dist": "^3.11.174",
-        "react": "^18.2.0",
-        "react-dom": "^18.2.0",
-        "react-dropzone": "^14.2.3",
-        "ts-jest": "^29.2.6",
-        "zustand": "^4.4.7"
+      "@anthropic-ai/sdk": "^0.12.0",
+      "@heroicons/react": "^2.1.1",
+      "@tanstack/react-query": "^5.18.0",
+      "html2canvas": "^1.4.1",
+      "jspdf": "^2.5.1",
+      "lodash": "^4.17.21",
+      "next": "14.1.0",
+      "onnxruntime-web": "^1.16.3",
+      "pdf-lib": "^1.17.1",
+      "pdfjs-dist": "3.11.174",
+      "react": "^18.2.0",
+      "react-dom": "^18.2.0",
+      "sharp": "^0.33.2",
+      "tesseract.js": "^5.0.4",
+      "zustand": "^4.5.0"
     },
     "devDependencies": {
-        "@testing-library/jest-dom": "^6.1.5",
-        "@testing-library/react": "^14.3.1",
-        "@types/html2canvas": "^1.0.0",
-        "@types/jest": "^29.5.14",
-        "@types/node": "^20.10.5",
-        "@types/react": "^18.2.45",
-        "@types/react-dom": "^18.2.18",
-        "autoprefixer": "^10.4.21",
-        "eslint": "^8.56.0",
-        "eslint-config-next": "^14.0.4",
-        "jest": "^29.7.0",
-        "jest-environment-jsdom": "^29.7.0",
-        "postcss": "^8.4.32",
-        "tailwindcss": "^3.4.17",
-        "typescript": "^5.3.3"
+      "autoprefixer": "^10.4.16",
+      "eslint": "^8.56.0",
+      "eslint-config-next": "14.1.0",
+      "postcss": "^8.4.33",
+      "tailwindcss": "^3.4.1"
     }
-}
+  }

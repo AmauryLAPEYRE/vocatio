@@ -1,158 +1,162 @@
-Vocatio - Optimisation de CV et Génération de Lettres de Motivation
-Vocatio est une application frontend avancée qui permet aux utilisateurs d'optimiser leur CV et de générer des lettres de motivation personnalisées, en préservant parfaitement la mise en forme originale du CV. L'application utilise l'IA d'Anthropic Claude pour l'analyse et la génération de contenu, offrant une expérience sans friction et des résultats de haute qualité.
-Afficher l'image
-Fonctionnalités Principales
-📄 Préservation parfaite du format des CV
+# Vocatio 2.0
 
-Import de CV existants (PDF, DOCX)
-Analyse précise et reconstruction fidèle du format visuel (polices, couleurs, mise en page)
-Optimisation du contenu textuel sans altérer le design et la structure
-HTML/CSS généré proprement pour une représentation parfaite
+Vocatio 2.0 est une application d'optimisation de CV avec IA avancée qui transforme de manière transparente un CV existant pour correspondre à n'importe quelle offre d'emploi, tout en conservant fidèlement sa mise en forme visuelle (design, couleurs, polices, structure, etc.).
 
-💼 Analyse intelligente des offres d'emploi
+## 🌟 Caractéristiques principales
 
-Import et analyse des offres d'emploi
-Extraction automatique des compétences requises et mots-clés
-Détection des exigences et responsabilités principales
-Suggestion d'adaptations pertinentes pour votre candidature
+- **Analyse documentaire avancée avec LayoutLM**: Comprend la structure spatiale et visuelle des documents sans balisage
+- **Préservation parfaite de la mise en forme**: Reproduction fidèle pixel-perfect de n'importe quel CV
+- **Adaptation intelligente du contenu**: Optimisation contextuelle avec respect des contraintes spatiales
+- **Comparaison visuelle et métriques**: Visualisation côte à côte et mise en évidence des modifications
+- **Export haute-fidélité**: Génération PDF avec fidélité visuelle garantie
 
-🔍 Analyse de correspondance avancée
+## 🛠️ Stack technique
 
-Évaluation du degré de compatibilité entre votre profil et le poste
-Identification des points forts à mettre en avant
-Détection des compétences manquantes ou à renforcer
-Recommandations personnalisées pour augmenter vos chances
+- **Frontend**: React 18, Next.js 14, Tailwind CSS
+- **Gestion d'état**: Zustand
+- **Requêtes et cache**: React Query
+- **Intelligence documentaire**: LayoutLM (quantifié pour Edge Functions)
+- **Analyse PDF**: PDF.js
+- **Edge Functions ML**: Vercel Edge Functions, ONNX Runtime
+- **IA/NLP**: API Anthropic Claude
+- **Exportation et rendu**: html2canvas, jsPDF
 
-✏️ Génération de lettres de motivation
+## 📋 Prérequis
 
-Création de lettres adaptées à chaque offre spécifique
-Styles d'écriture variés (formel, créatif, technique, etc.)
-Options de personnalisation avancées (ton, longueur, structure)
-Mise en valeur intelligente de vos expériences pertinentes
+- Node.js 18+ et npm
+- Python 3.8+ (pour la quantification du modèle LayoutLM)
+- Compte Vercel (pour le déploiement)
+- Clé API Anthropic Claude
 
-📊 Exportation haute qualité
+## 🚀 Installation
 
-Export PDF fidèle au design original
-Options d'impression optimisées
-Conservation de toutes les polices et éléments visuels
+### 1. Cloner le projet
 
-Architecture Technique
-Vocatio est développé avec les technologies modernes suivantes :
-Frontend
+```bash
+git clone <url-du-dépôt>
+cd vocatio-2.0
+```
 
-Framework: React 18 + Next.js 14
-Styles: Tailwind CSS
-Gestion d'état: Zustand
-UI/UX: Composants accessibles et responsive
+### 2. Installer les dépendances JavaScript
 
-Traitement de Documents
+```bash
+npm install
+```
 
-Analyse PDF: PDF.js avec extraction avancée de mise en forme
-Traitement DOCX: Mammoth.js avec préservation de structure
-Rendu HTML/CSS: Système personnalisé de recréation fidèle
-Export PDF: html2canvas + jsPDF optimisés
+### 3. Configurer les variables d'environnement
 
-IA/NLP
+Créez un fichier `.env.local` à la racine du projet :
 
-Modèle: Anthropic Claude via API
-Infrastructure: Vercel Edge Functions
-Prompting: Techniques d'ingénierie de prompt avancées
+```
+ANTHROPIC_API_KEY=votre_clé_api_anthropic
+```
 
-Performance et Sécurité
+### 4. Préparation du modèle LayoutLM
 
-Optimisations: Chargement asynchrone, mise en cache, lazy loading
-Sécurité: Validation des fichiers, sanitisation HTML, protection CSRF
-Accessibilité: Conformité WCAG AA, navigation au clavier, support lecteurs d'écran
+Pour le développement et la production, nous avons besoin de quantifier le modèle LayoutLM :
 
-Structure du Projet
-Copiersrc/
-├── components/          # Composants React organisés par fonctionnalité
-│   ├── common/          # Composants UI communs (optimisés et accessibles)
-│   ├── cv/              # Composants liés aux CV (avec préservation de format)
-│   ├── job/             # Composants liés aux offres d'emploi
-│   ├── letter/          # Composants liés aux lettres de motivation
-│   ├── matcher/         # Composants d'analyse d'adéquation
-│   └── export/          # Composants liés à l'exportation
-├── hooks/               # Hooks personnalisés centralisés
-│   ├── useOptimization.tsx
-│   ├── useLetterGeneration.tsx
-│   └── useError.tsx
-├── lib/
-│   ├── accessibility/   # Outils d'accessibilité
-│   ├── api/             # Intégrations API (Claude)
-│   ├── document-processing/ # Traitement avancé de documents
-│   ├── error/           # Gestion centralisée des erreurs
-│   ├── performance/     # Optimisations de performance
-│   └── security/        # Outils de sécurité
-├── pages/               # Pages Next.js et API routes
-├── store/               # Gestion d'état Zustand
-└── styles/              # Styles CSS
-Installation et Déploiement
-Prérequis
+```bash
+# Créer et activer un environnement Python dédié
+python -m venv vocatio-ml-env
+vocatio-ml-env\Scripts\activate  # Windows
+source vocatio-ml-env/bin/activate  # macOS/Linux
 
-Node.js 18+ et npm
-Compte Vercel
-Clé API Anthropic Claude
+# Installer les dépendances nécessaires
+pip install torch==2.0.1
+pip install tf-keras
+pip install transformers==4.30.2
+pip install onnx==1.14.0 onnxruntime==1.15.1
+pip install optimum==1.12.0
 
-Installation locale
+# Quantifier le modèle
+python scripts/quantize_layoutlm.py --input_model microsoft/layoutlm-base-uncased --output_model ./public/models/layoutlm-quantized.onnx --quantize int8
+```
 
-Cloner le dépôt
-bashCopiergit clone https://github.com/votre-compte/vocatio.git
-cd vocatio
+### 5. Lancer l'application en développement
 
-Installer les dépendances
-bashCopiernpm install
+```bash
+npm run dev
+```
 
-Configurer les variables d'environnement
+L'application sera disponible sur [http://localhost:3000](http://localhost:3000)
 
-Créer un fichier .env.local à la racine du projet
-Ajouter votre clé API Anthropic: ANTHROPIC_API_KEY=votre_clé_api
+## 📦 Déploiement
 
+### Déploiement sur Vercel
 
-Démarrer le serveur de développement
-bashCopiernpm run dev
+```bash
+# Installation de Vercel CLI
+npm i -g vercel
 
-L'application sera disponible à l'adresse http://localhost:3000
+# Déploiement
+vercel
+```
 
-Déploiement sur Vercel
+Assurez-vous de configurer les variables d'environnement sur Vercel :
 
-Connectez votre dépôt GitHub à Vercel
-Configurez la variable d'environnement ANTHROPIC_API_KEY dans les paramètres du projet
-Déployez l'application
+- `ANTHROPIC_API_KEY`: Votre clé API Anthropic Claude
 
-Optimisations et Performances
-Vocatio intègre de nombreuses optimisations pour garantir une expérience rapide et fluide :
+## 📁 Structure du projet
 
-Préchargement intelligent des ressources critiques
-Mise en cache des traitements lourds pour éviter les répétitions
-Lazy loading des composants et images non critiques
-Traitement par lots pour les opérations intensives
-Compression et optimisation des ressources statiques
+```
+vocatio-2.0/
+├── app/                      # Application Next.js
+│   ├── api/                  # Routes API Edge Functions
+│   │   ├── document-analysis/
+│   │   ├── optimize-content/
+│   │   └── export-document/
+│   ├── layout.js             # Layout principal
+│   ├── globals.css           # Styles globaux
+│   └── page.js               # Page principale
+├── components/               # Composants React
+│   ├── DocumentComparison.jsx
+│   ├── DocumentPreview.jsx
+│   ├── ExportOptions.jsx
+│   ├── FileUploadZone.jsx
+│   ├── Header.jsx
+│   ├── JobDescriptionInput.jsx
+│   ├── LoadingIndicator.jsx
+│   └── OptimizationMetrics.jsx
+├── lib/                      # Logique métier
+│   ├── layoutlm/             # Intégration LayoutLM
+│   ├── document/             # Traitement de document
+│   ├── content/              # Optimisation de contenu
+│   └── export/               # Export PDF
+├── public/                   # Fichiers statiques
+│   └── models/               # Modèles ML
+│       └── layoutlm-quantized.onnx
+├── scripts/                  # Scripts utilitaires
+│   └── quantize_layoutlm.py  # Script de quantification
+├── store/                    # Gestion d'état Zustand
+│   └── index.js
+├── next.config.js            # Configuration Next.js
+├── package.json              # Dépendances
+├── tailwind.config.js        # Configuration Tailwind
+└── vercel.json               # Configuration Vercel
+```
 
-Sécurité et Confidentialité
-La sécurité et la confidentialité des données sont des priorités absolues :
+## 🔄 Flux d'utilisation
 
-Traitement 100% côté client - Aucune donnée sensible n'est stockée sur nos serveurs
-Validation de fichiers - Vérification complète des fichiers téléchargés
-Sanitisation HTML - Protection contre les injections XSS
-En-têtes de sécurité - Protection contre diverses vulnérabilités web
-Accès API sécurisé - Communication sécurisée avec l'API Claude
+1. **Upload du CV**: L'utilisateur télécharge son CV au format PDF/DOCX
+2. **Analyse documentaire**: LayoutLM analyse la structure et la mise en page du document
+3. **Saisie de l'offre d'emploi**: L'utilisateur saisit le texte de l'offre d'emploi cible
+4. **Optimisation du contenu**: Claude API adapte le contenu pour mieux correspondre à l'offre
+5. **Comparaison et prévisualisation**: Visualisation côte à côte des versions originale et optimisée
+6. **Export**: Téléchargement du CV optimisé au format PDF
 
-Accessibilité
-Vocatio est conçu pour être accessible à tous les utilisateurs :
+## 🧪 Dépannage
 
-Navigation au clavier complète
-Compatibilité avec les lecteurs d'écran
-Contraste de couleurs conforme aux normes WCAG AA
-Textes alternatifs pour tous les éléments visuels
-Messages d'erreur explicites et instructions claires
+### Problèmes courants
 
-Tests
-Exécuter les tests unitaires et d'intégration :
-bashCopiernpm test
-Exécuter les tests en mode watch :
-bashCopiernpm run test:watch
-Contribution
-Consultez le fichier CONTRIBUTING.md pour les directives de contribution.
-Licence
-Ce projet est sous licence MIT. Voir le fichier LICENSE pour plus de détails.
+- **Erreur de quantification LayoutLM**: Vérifiez que vous avez bien installé tf-keras et les versions correctes des dépendances
+- **Erreur "Module not found"**: Assurez-vous d'avoir exécuté `npm install`
+- **Erreur d'API Claude**: Vérifiez votre clé API dans le fichier `.env.local`
+- **Problèmes avec Vercel Edge Functions**: Assurez-vous que le modèle quantifié ne dépasse pas 50MB
+
+## 🤝 Contribution
+
+Les contributions sont les bienvenues ! N'hésitez pas à ouvrir une issue ou à soumettre une pull request.
+
+---
+
+Développé avec ❤️ pour aider les candidats à se démarquer dans leur recherche d'emploi.
