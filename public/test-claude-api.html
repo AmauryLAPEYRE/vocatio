@@ -57,7 +57,7 @@
     
     <div>
         <button id="send-btn">Envoyer à Claude</button>
-        <span id="loader" class="loading" style="display: none;"></span>
+        <span id="LoadingState" class="loading" style="display: none;"></span>
     </div>
     
     <h2>Réponse:</h2>
@@ -71,7 +71,7 @@
             const messageEl = document.getElementById('message');
             const responseEl = document.getElementById('response');
             const logsEl = document.getElementById('logs');
-            const loaderEl = document.getElementById('loader');
+            const LoadingStateEl = document.getElementById('LoadingState');
             const message = messageEl.value.trim();
             
             if (!message) {
@@ -79,8 +79,8 @@
                 return;
             }
             
-            // Afficher le loader
-            loaderEl.style.display = 'inline-block';
+            // Afficher le LoadingState
+            LoadingStateEl.style.display = 'inline-block';
             responseEl.textContent = 'En attente de réponse...';
             
             try {
@@ -124,8 +124,8 @@
                 log(`Erreur: ${error.message}`);
                 responseEl.textContent = `Erreur lors de la communication avec l'API: ${error.message}`;
             } finally {
-                // Cacher le loader
-                loaderEl.style.display = 'none';
+                // Cacher le LoadingState
+                LoadingStateEl.style.display = 'none';
             }
         });
         

@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useClaudeAPI } from 'src/lib/api/claude';
 import { useStore, useMatchingStore } from 'src/store';
-import { Loader } from 'src/components/common/Loader';
+import { LoadingState } from '@/components/common/LoadingState';
 import { SkillBadge } from 'src/components/common/SkillBadge';
 
 interface MatchAnalysisProps {

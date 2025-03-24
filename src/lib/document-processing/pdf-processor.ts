@@ -47,7 +47,7 @@ interface PDFDocumentInfo {
     };
   };
   originalArrayBuffer: ArrayBuffer;
-  originalPdfBase64: string; // Nouvelle propriété pour stocker le PDF en Base64
+  originalPdfBase64: string; // Pour stocker le PDF en Base64
 }
 
 /**
@@ -84,10 +84,10 @@ export async function processPDFDocument(file: File): Promise<PDFDocumentInfo> {
     // Convertir le fichier en ArrayBuffer
     const arrayBuffer = await file.arrayBuffer();
     
-    // Convertir l'ArrayBuffer en Base64 pour éviter les problèmes de détachement
+    // Convertir l'ArrayBuffer en Base64
     const base64Data = arrayBufferToBase64(arrayBuffer);
     
-    // Optimisations pour le chargement PDF
+    // Options optimisées pour le chargement PDF
     const loadingOptions = {
       data: arrayBuffer,
       useWorkerFetch: false,

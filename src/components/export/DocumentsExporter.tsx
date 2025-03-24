@@ -1,16 +1,11 @@
 // src/components/export/DocumentsExporter.tsx
-import { useState } from 'react';
-import { useStore } from 'src/store';
-import { jsPDF } from 'jspdf';
-import { CVPreview } from 'src/components/cv/CVPreview';
-import { LetterPreview } from 'src/components/letter/LetterPreview';
-import { Loader } from 'src/components/common/Loader';
-import { Button } from 'src/components/common/Button';
-import { HTMLtoPDFExporter } from 'src/lib/document-processing/html-to-pdf';
 
-/**
- * Composant pour l'exportation des documents finalisés (CV optimisé et lettre de motivation)
- */
+import { useState } from 'react';
+import { useStore } from '@/store';
+import { jsPDF } from 'jspdf';
+import { LoadingState } from '@/components/common/LoadingState';
+import { HTMLtoPDFExporter } from '@/lib/document-processing/html-to-pdf';
+
 export function DocumentsExporter() {
   const [exportingCV, setExportingCV] = useState(false);
   const [exportingLetter, setExportingLetter] = useState(false);
@@ -19,7 +14,7 @@ export function DocumentsExporter() {
   
   // Récupérer les données des stores
   const {
-    cv: { optimizedContent: optimizedCV, fileName: cvFileName, template: cvTemplate },
+    cv: { optimizedContent: optimizedCV, fileName: cvFileName },
     job: { companyName, jobTitle },
     letter: { content: letterContent }
   } = useStore();
@@ -44,9 +39,9 @@ export function DocumentsExporter() {
         console.log("Export CV avec format préservé (HTML)");
         
         // Récupérer les dimensions de page du template
-        const pageSize = cvTemplate?.pages[0] ? {
-          width: cvTemplate.pages[0].width,
-          height: cvTemplate.pages[0].height
+        const pageSize = optimizedCV.template?.pages[0] ? {
+          width: optimizedCV.template.pages[0].width,
+          height: optimizedCV.template.pages[0].height
         } : undefined;
         
         // Générer le PDF à partir du HTML
@@ -227,8 +222,21 @@ export function DocumentsExporter() {
     }
     
     try {
-      await HTMLtoPDFExporter.printHTML(optimizedCV.formattedHTML);
-      setSuccess('CV envoyé à l\'impression !');
+      if (HTMLtoPDFExporter && HTMLtoPDFExporter.printHTML) {
+        await HTMLtoPDFExporter.printHTML(optimizedCV.formattedHTML);
+        setSuccess('CV envoyé à l\'impression !');
+      } else {
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.write(optimizedCV.formattedHTML);
+          printWindow.document.close();
+          printWindow.print();
+          printWindow.close();
+          setSuccess('CV envoyé à l\'impression !');
+        } else {
+          setError('Impossible d\'ouvrir la fenêtre d\'impression. Veuillez vérifier les paramètres de votre navigateur.');
+        }
+      }
     } catch (err) {
       console.error('Erreur lors de l\'impression du CV:', err);
       setError('Une erreur est survenue lors de l\'impression du CV.');
@@ -281,30 +289,33 @@ export function DocumentsExporter() {
                 </div>
               </div>
               <div className="flex justify-center space-x-2">
-                <Button
+                <button
                   onClick={exportCV}
-                  isLoading={exportingCV}
-                  icon={(
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  disabled={exportingCV}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center"
+                >
+                  {exportingCV && (
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                   )}
-                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
                   Exporter le CV en PDF
-                </Button>
+                </button>
                 
                 {hasFormattedCV && (
-                  <Button
+                  <button
                     onClick={printCV}
-                    variant="outline"
-                    icon={(
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                      </svg>
-                    )}
+                    className="px-4 py-2 bg-white text-blue-600 border border-blue-600 rounded-md hover:bg-blue-50 flex items-center"
                   >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
                     Imprimer
-                  </Button>
+                  </button>
                 )}
               </div>
             </>
@@ -331,17 +342,22 @@ export function DocumentsExporter() {
                 </div>
               </div>
               <div className="flex justify-center">
-                <Button
+                <button
                   onClick={exportLetter}
-                  isLoading={exportingLetter}
-                  icon={(
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  disabled={exportingLetter}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center"
+                >
+                  {exportingLetter && (
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                   )}
-                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
                   Exporter la lettre en PDF
-                </Button>
+                </button>
               </div>
             </>
           ) : (
@@ -360,19 +376,22 @@ export function DocumentsExporter() {
             Exportez votre CV optimisé et votre lettre de motivation en une seule opération.
           </p>
           <div className="flex justify-center">
-            <Button
-              variant="primary"
-              size="large"
+            <button
               onClick={exportAll}
-              isLoading={exportingCV || exportingLetter}
-              icon={(
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              disabled={exportingCV || exportingLetter}
+              className="px-6 py-3 bg-blue-600 text-white text-lg rounded-md hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center"
+            >
+              {(exportingCV || exportingLetter) && (
+                <svg className="animate-spin -ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
               )}
-            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
               Exporter tous les documents
-            </Button>
+            </button>
           </div>
         </div>
       )}

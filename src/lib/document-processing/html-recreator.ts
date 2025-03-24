@@ -8,8 +8,10 @@ interface TextElement {
   fontFamily: string;
   fontSize: number;
   fontWeight: string;
+  fontStyle?: string;
   color: string;
   transform?: number[];
+  angle?: number;
   pageIndex: number;
 }
 
@@ -38,7 +40,7 @@ interface DocumentTemplate {
   pages: {
     width: number;
     height: number;
-    elements: (TextElement | ImageElement)[];
+    elements: (TextElement | ImageElement | any)[];
     sections: SectionElement[];
   }[];
   palette: string[]; 
@@ -52,6 +54,13 @@ interface DocumentTemplate {
       left: number;
     };
   };
+}
+
+interface PDFMetadataInfo {
+  Title?: string;
+  Author?: string;
+  CreationDate?: string;
+  [key: string]: any;
 }
 
 /**
@@ -106,6 +115,10 @@ export class HTMLRecreator {
       // Charger le document PDF
       const pdfDocument = await pdfjs.getDocument(loadingOptions).promise;
       
+      // Extraire les métadonnées
+      const metadata = await pdfDocument.getMetadata();
+      const metadataInfo = metadata.info as PDFMetadataInfo || {};
+      
       const template: DocumentTemplate = {
         pages: [],
         palette: [],
@@ -125,12 +138,54 @@ export class HTMLRecreator {
         const page = await pdfDocument.getPage(i);
         const viewport = page.getViewport({ scale: 1.0 });
         
-        const pageElements: (TextElement | ImageElement)[] = [];
+        // AMÉLIORATION: Extraire également les éléments graphiques (lignes, rectangles, etc.)
+        const operatorList = await page.getOperatorList();
+        const graphicElements: any[] = [];
+        
+        // Analyser les opérateurs pour extraire les éléments graphiques
+        for (let j = 0; j < operatorList.fnArray.length; j++) {
+          const op = operatorList.fnArray[j];
+          const args = operatorList.argsArray[j];
+          
+          // Extraire les rectangles (souvent utilisés pour les sections/bordures)
+          if (op === pdfjs.OPS.rectangle) {
+            graphicElements.push({
+              type: 'rectangle',
+              x: args[0],
+              y: viewport.height - args[1] - args[3], // Inverser la coordonnée y
+              width: args[2],
+              height: args[3],
+              color: 'rgba(0, 0, 0, 0.1)', // Couleur par défaut, à ajuster
+              pageIndex: i - 1
+            });
+          }
+          
+          // Extraire les lignes
+          if (op === pdfjs.OPS.moveTo && j < operatorList.fnArray.length - 1 && 
+              operatorList.fnArray[j + 1] === pdfjs.OPS.lineTo) {
+            const startArgs = args;
+            const endArgs = operatorList.argsArray[j + 1];
+            
+            graphicElements.push({
+              type: 'line',
+              x1: startArgs[0],
+              y1: viewport.height - startArgs[1],
+              x2: endArgs[0],
+              y2: viewport.height - endArgs[1],
+              color: 'rgba(0, 0, 0, 0.5)', // Couleur par défaut, à ajuster
+              pageIndex: i - 1
+            });
+          }
+        }
+        
+        // AMÉLIORATION: Ajouter les éléments graphiques au template
+        const pageElements: (TextElement | ImageElement | any)[] = [...graphicElements];
         
         // Extraction du contenu texte avec style
-        const textContent = await page.getTextContent();
+        const textContent = await page.getTextContent({ includeMarkedContent: true });
         const textItems = textContent.items.filter(item => 'str' in item);
         
+        // AMÉLIORATION: Analyse des styles plus précise
         for (const item of textItems) {
           // @ts-ignore - Conversion de type pour accéder aux propriétés
           const text = item.str || '';
@@ -140,79 +195,81 @@ export class HTMLRecreator {
           const transform = item.transform || [1, 0, 0, 1, 0, 0];
           const [a, b, c, d, e, f] = transform;
           
-          // Calculer la position et la taille
+          // Calculer la position
           const x = e;
-          const y = f; // Inverser la coordonnée y
+          const y = viewport.height - f; // Inverser la coordonnée y
           
-          // Estimer la taille de police et l'angle
+          // Estimer la taille de police et l'angle avec plus de précision
           const fontSize = Math.sqrt(a * a + b * b) * 12;
           const angle = Math.atan2(b, a) * (180 / Math.PI);
           
-          // Déterminer la couleur (si disponible)
+          // AMÉLIORATION: Meilleure détection de la couleur
           // @ts-ignore
-          const colorArray = item.color || [0, 0, 0];
-          const r = Math.round(colorArray[0] * 255);
-          const g = Math.round(colorArray[1] * 255);
-          const blueVal = Math.round(colorArray[2] * 255);
-          const color = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${blueVal.toString(16).padStart(2, '0')}`;
+          let color = '#000000'; // Noir par défaut
+          try {
+            // @ts-ignore
+            if (item.color) {
+              // @ts-ignore
+              const colorArray = item.color;
+              const r = Math.round(colorArray[0] * 255);
+              const g = Math.round(colorArray[1] * 255);
+              const b = Math.round(colorArray[2] * 255);
+              color = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+            }
+          } catch (err) {
+            console.error('Erreur lors de l\'extraction de la couleur:', err);
+          }
           
           // Ajouter à la palette de couleurs
           colorSet.add(color);
           
-          // Déterminer la police
+          // AMÉLIORATION: Meilleure analyse des polices
           // @ts-ignore
-          const fontName = item.fontName || 'sans-serif';
-          fontSet.add(fontName);
+          let fontFamily = 'sans-serif';
+          let fontWeight = 'normal';
+          let fontStyle = 'normal';
           
-          // Déterminer le poids de la police
-          const isBold = fontName.toLowerCase().includes('bold');
+          try {
+            // @ts-ignore
+            if (item.fontName) {
+              // @ts-ignore
+              const fontName = item.fontName;
+              fontSet.add(fontName);
+              
+              // Extraire le nom de base de la police
+              fontFamily = fontName.replace(/-(Bold|Italic|Regular|Medium|Light|ExtraBold|BoldItalic|LightItalic|MediumItalic)$/i, '');
+              
+              // Détecter le style et le poids
+              if (fontName.includes('Bold')) fontWeight = 'bold';
+              if (fontName.includes('ExtraBold')) fontWeight = '800';
+              if (fontName.includes('Light')) fontWeight = '300';
+              if (fontName.includes('Medium')) fontWeight = '500';
+              if (fontName.includes('Italic')) fontStyle = 'italic';
+            }
+          } catch (err) {
+            console.error('Erreur lors de l\'extraction de la police:', err);
+          }
           
-          // Créer l'élément texte
+          // AMÉLIORATION: Ajout des informations de style
           const textElement: TextElement = {
             text,
             x,
             y,
-            fontFamily: fontName.replace(/Bold|Italic|Regular|Medium/i, '').trim() || 'sans-serif',
+            fontFamily,
             fontSize,
-            fontWeight: isBold ? 'bold' : 'normal',
+            fontWeight,
+            fontStyle,
             color,
             transform,
+            angle,
             pageIndex: i - 1
           };
           
           pageElements.push(textElement);
         }
         
-        // Détecter les sections du document
-        const sections: SectionElement[] = [];
-        
-        // Regrouper les éléments texte par proximité et style similaire
-        const potentialSections = this.detectSections(pageElements.filter(e => 'text' in e) as TextElement[]);
-        
-        for (let j = 0; j < potentialSections.length; j++) {
-          const section = potentialSections[j];
-          const elements = section.elements;
-          
-          // Calculer la boîte englobante
-          const xValues = elements.map(e => e.x);
-          const yValues = elements.map(e => e.y);
-          const minX = Math.min(...xValues);
-          const maxX = Math.max(...xValues);
-          const minY = Math.min(...yValues);
-          const maxY = Math.max(...yValues);
-          
-          sections.push({
-            id: `section-${i}-${j}`,
-            title: elements[0]?.text || `Section ${j + 1}`,
-            elements,
-            boundingBox: {
-              x: minX,
-              y: minY,
-              width: maxX - minX,
-              height: maxY - minY
-            }
-          });
-        }
+        // Détection des sections du document avec algorithme amélioré
+        const sections = this.detectSectionsImproved(pageElements.filter(e => 'text' in e) as TextElement[], graphicElements);
         
         // Ajouter la page au template
         template.pages.push({
@@ -257,34 +314,117 @@ export class HTMLRecreator {
   }
   
   /**
-   * Regroupe les éléments texte en sections potentielles
+   * Version améliorée de la détection de sections qui prend en compte
+   * les éléments graphiques comme délimiteurs
    */
-  private static detectSections(textElements: TextElement[]): { elements: TextElement[] }[] {
+  private static detectSectionsImproved(textElements: TextElement[], graphicElements: any[]): SectionElement[] {
     // Trier les éléments par position y (de haut en bas)
     const sortedElements = [...textElements].sort((a, b) => a.y - b.y);
     
-    const sections: { elements: TextElement[] }[] = [];
-    let currentSection: TextElement[] = [];
+    // Trouver les lignes horizontales qui pourraient séparer des sections
+    const horizontalLines = graphicElements
+      .filter(e => e.type === 'line' && Math.abs(e.y1 - e.y2) < 5) // Lignes à peu près horizontales
+      .map(e => ({ y: Math.min(e.y1, e.y2), width: Math.abs(e.x2 - e.x1) }))
+      .filter(line => line.width > 50) // Lignes assez longues pour être des séparateurs
+      .sort((a, b) => a.y - b.y);
     
-    // Regrouper les éléments par proximité verticale
+    // Trouver les rectangles qui pourraient encadrer des sections
+    const rectangles = graphicElements
+      .filter(e => e.type === 'rectangle' && e.width > 50 && e.height > 20) // Rectangles assez grands
+      .sort((a, b) => a.y - b.y);
+    
+    const sections: SectionElement[] = [];
+    let currentSection: TextElement[] = [];
+    let sectionStartY = 0;
+    
+    // Fonction pour vérifier si un élément est proche d'une ligne horizontale
+    const isNearHorizontalLine = (element: TextElement, tolerance: number = 15): boolean => {
+      return horizontalLines.some(line => Math.abs(element.y - line.y) < tolerance);
+    };
+    
+    // Fonction pour vérifier si un élément est dans un rectangle
+    const findEnclosingRectangle = (element: TextElement): any | null => {
+      return rectangles.find(rect => 
+        element.x >= rect.x && element.x <= rect.x + rect.width &&
+        element.y >= rect.y && element.y <= rect.y + rect.height
+      ) || null;
+    };
+    
+    // Regrouper les éléments en sections
     for (let i = 0; i < sortedElements.length; i++) {
       const element = sortedElements[i];
       
-      // Si c'est le premier élément ou s'il est proche du précédent
-      if (i === 0 || element.y - sortedElements[i - 1].y < element.fontSize * 1.5) {
-        currentSection.push(element);
-      } else {
-        // Si l'élément est éloigné, commencer une nouvelle section
-        if (currentSection.length > 0) {
-          sections.push({ elements: [...currentSection] });
-        }
+      // Premier élément ou éléments proches
+      if (i === 0) {
         currentSection = [element];
+        sectionStartY = element.y;
+        continue;
+      }
+      
+      // Vérifier s'il faut commencer une nouvelle section
+      const startNewSection = 
+        // Si l'élément est séparé par une grande distance verticale
+        (element.y - sortedElements[i - 1].y > element.fontSize * 2) ||
+        // Ou si l'élément est près d'une ligne horizontale (possible séparateur de section)
+        isNearHorizontalLine(element) ||
+        // Ou si l'élément est dans un rectangle différent
+        (findEnclosingRectangle(element) !== findEnclosingRectangle(sortedElements[i - 1])) ||
+        // Ou si l'élément a un style très différent (possible titre de section)
+        (element.fontSize > sortedElements[i - 1].fontSize * 1.3 || element.fontWeight === 'bold' && sortedElements[i - 1].fontWeight !== 'bold');
+      
+      if (startNewSection) {
+        if (currentSection.length > 0) {
+          // Calculer la boîte englobante de la section actuelle
+          const xValues = currentSection.map(e => e.x);
+          const yValues = currentSection.map(e => e.y);
+          const minX = Math.min(...xValues);
+          const maxX = Math.max(...xValues);
+          const minY = Math.min(...yValues);
+          const maxY = Math.max(...yValues);
+          
+          // Ajouter la section actuelle
+          sections.push({
+            id: `section-${sections.length}`,
+            title: currentSection[0]?.text || `Section ${sections.length + 1}`,
+            elements: [...currentSection],
+            boundingBox: {
+              x: minX,
+              y: minY,
+              width: maxX - minX,
+              height: maxY - minY
+            }
+          });
+        }
+        
+        // Commencer une nouvelle section
+        currentSection = [element];
+        sectionStartY = element.y;
+      } else {
+        // Continuer la section actuelle
+        currentSection.push(element);
       }
     }
     
     // Ajouter la dernière section
     if (currentSection.length > 0) {
-      sections.push({ elements: currentSection });
+      const xValues = currentSection.map(e => e.x);
+      const yValues = currentSection.map(e => e.y);
+      const minX = Math.min(...xValues);
+      const maxX = Math.max(...xValues);
+      const minY = Math.min(...yValues);
+      const maxY = Math.max(...yValues);
+      
+      sections.push({
+        id: `section-${sections.length}`,
+        title: currentSection[0]?.text || `Section ${sections.length + 1}`,
+        elements: currentSection,
+        boundingBox: {
+          x: minX,
+          y: minY,
+          width: maxX - minX,
+          height: maxY - minY
+        }
+      });
     }
     
     return sections;
@@ -319,12 +459,13 @@ export class HTMLRecreator {
   
   /**
    * Génère un document HTML/CSS qui reproduit fidèlement le template
-   * @param template Template du document
-   * @param optimizedSections Sections avec contenu optimisé
-   * @returns Code HTML/CSS du document recréé
+   * Version améliorée avec meilleur support des polices et éléments graphiques
    */
   static generateHTML(template: DocumentTemplate, optimizedSections?: Record<string, string>): string {
-    // CSS amélioré avec meilleure visibilité et débogage
+    // Ajouter les polices (Google Fonts ou autres)
+    const fontImports = this.generateFontImports(template.fonts);
+    
+    // CSS amélioré avec meilleure fidélité visuelle
     const css = `
       body, html {
         margin: 0;
@@ -356,10 +497,19 @@ export class HTMLRecreator {
         white-space: pre;
         transform-origin: left top;
         overflow: visible;
-        /* Pour débogage, décommentez ces lignes: */
-        /*border: 1px solid rgba(255, 0, 0, 0.1);
-        background-color: rgba(255, 255, 0, 0.05);*/
         z-index: 1;
+      }
+      
+      .pdf-line {
+        position: absolute;
+        overflow: visible;
+        z-index: 0;
+      }
+      
+      .pdf-rectangle {
+        position: absolute;
+        overflow: visible;
+        z-index: 0;
       }
       
       .pdf-container {
@@ -371,7 +521,7 @@ export class HTMLRecreator {
       
       /* Média queries pour l'impression */
       @media print {
-        body { margin: 0; }
+        body { margin: 0; padding: 0; }
         .pdf-page { margin: 0; page-break-after: always; box-shadow: none; }
       }
     `;
@@ -381,7 +531,8 @@ export class HTMLRecreator {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Document recréé</title>
+      <title>CV Optimisé</title>
+      ${fontImports}
       <style>${css}</style>
     </head>
     <body>
@@ -393,7 +544,39 @@ export class HTMLRecreator {
         <div class="pdf-page" style="width: ${page.width}px; height: ${page.height}px;">
           <div class="pdf-container">`;
       
-      // Ajouter chaque élément
+      // Ajouter d'abord les éléments graphiques (en arrière-plan)
+      for (const element of page.elements) {
+        if (element.type === 'rectangle') {
+          html += `
+            <div class="pdf-rectangle" style="
+              left: ${element.x}px;
+              top: ${element.y}px;
+              width: ${element.width}px;
+              height: ${element.height}px;
+              background-color: ${element.color || 'rgba(0, 0, 0, 0.1)'};
+              border: 1px solid ${element.borderColor || 'rgba(0, 0, 0, 0.2)'};
+            "></div>`;
+        } else if (element.type === 'line') {
+          // Calculer la longueur et l'angle de la ligne
+          const dx = element.x2 - element.x1;
+          const dy = element.y2 - element.y1;
+          const length = Math.sqrt(dx * dx + dy * dy);
+          const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+          
+          html += `
+            <div class="pdf-line" style="
+              left: ${element.x1}px;
+              top: ${element.y1}px;
+              width: ${length}px;
+              height: 1px;
+              background-color: ${element.color || 'rgba(0, 0, 0, 0.5)'};
+              transform: rotate(${angle}deg);
+              transform-origin: left center;
+            "></div>`;
+        }
+      }
+      
+      // Ensuite ajouter les éléments texte (au premier plan)
       for (const element of page.elements) {
         if ('text' in element) {
           // Élément texte
@@ -406,7 +589,13 @@ export class HTMLRecreator {
           if (optimizedSections) {
             for (const section of page.sections) {
               if (optimizedSections[section.id] && section.elements.includes(textElement)) {
-                content = optimizedSections[section.id];
+                // AMÉLIORATION: Préserver la casse et le format d'origine si possible
+                if (textElement === section.elements[0] && textElement.fontWeight === 'bold') {
+                  // C'est probablement un titre, conserver le texte original
+                  content = textElement.text;
+                } else {
+                  content = optimizedSections[section.id];
+                }
                 break;
               }
             }
@@ -414,7 +603,7 @@ export class HTMLRecreator {
           
           // Créer le style pour l'élément avec valeurs de sécurité par défaut
           const transform = textElement.transform ? 
-            `matrix(${textElement.transform[0] || 1}, ${textElement.transform[1] || 0}, ${textElement.transform[2] || 0}, ${textElement.transform[3] || 1}, ${textElement.transform[4] || 0}, ${textElement.transform[5] || 0})` : 
+            `matrix(${textElement.transform[0] || 1}, ${textElement.transform[1] || 0}, ${textElement.transform[2] || 0}, ${textElement.transform[3] || 1}, 0, 0)` : 
             'none';
           
           // S'assurer que le contenu est visible et contient quelque chose
@@ -427,11 +616,13 @@ export class HTMLRecreator {
               font-family: '${textElement.fontFamily.replace(/['"<>]/g, '')}, sans-serif';
               font-size: ${textElement.fontSize || 12}px;
               font-weight: ${textElement.fontWeight || 'normal'};
+              font-style: ${textElement.fontStyle || 'normal'};
               color: ${textElement.color || 'black'};
               transform: ${transform};
               min-width: 4px;
               min-height: 4px;
               text-align: left;
+              ${textElement.angle ? `transform: rotate(${textElement.angle}deg);` : ''}
             ">${safeContent}</div>`;
         } else if ('src' in element) {
           // Élément image
@@ -445,11 +636,6 @@ export class HTMLRecreator {
             ">`;
         }
       }
-      
-      // Ajouter un marqueur pour débogage
-      html += `
-        <div style="position:absolute; top:10px; left:10px; width:20px; height:20px; background:red; z-index:9999;"></div>
-      `;
       
       html += `
           </div>
@@ -475,6 +661,43 @@ export class HTMLRecreator {
     </html>`;
     
     return html;
+  }
+  
+  /**
+   * Génère les imports de polices pour les polices détectées
+   */
+  private static generateFontImports(fonts: string[]): string {
+    // Liste des polices Google Fonts courantes
+    const googleFonts = [
+      'Arial', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Source Sans Pro',
+      'Raleway', 'PT Sans', 'Noto Sans', 'Ubuntu', 'Nunito', 'Poppins', 'Inter',
+      'Quicksand', 'Rubik', 'Work Sans', 'Mulish', 'Nunito Sans', 'DM Sans'
+    ];
+    
+    // Filtrer et normaliser les noms de polices
+    const normalizedFonts = fonts.map(font => {
+      // Extraire le nom de base de la police
+      return font.replace(/-(Bold|Italic|Regular|Medium|Light|ExtraBold|BoldItalic|LightItalic|MediumItalic)$/i, '');
+    });
+    
+    // Supprimer les doublons
+    const uniqueFonts = [...new Set(normalizedFonts)];
+    
+    // Filtrer pour n'inclure que les polices Google Fonts
+    const googleFontsList = uniqueFonts.filter(font => 
+      googleFonts.some(gFont => font.toLowerCase().includes(gFont.toLowerCase()))
+    );
+    
+    // S'il y a des polices Google Fonts, générer l'import
+    if (googleFontsList.length > 0) {
+      const fontQuery = googleFontsList
+        .map(font => font.replace(/\s+/g, '+'))
+        .join('|');
+      
+      return `<link href="https://fonts.googleapis.com/css2?family=${fontQuery}:wght@300;400;500;700&display=swap" rel="stylesheet">`;
+    }
+    
+    return '';
   }
   
   /**

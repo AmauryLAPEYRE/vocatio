@@ -1,10 +1,10 @@
 // src/components/cv/HTMLBasedCVOptimizer.tsx
+
 import { useState, useEffect } from 'react';
-import { useClaudeAPI } from 'src/lib/api/claude';
-import { useStore, useCVStore } from 'src/store';
-import { Loader } from 'src/components/common/Loader';
-import { HTMLRecreator } from 'src/lib/document-processing/html-recreator';
-import { PDFViewer } from '../pdf/PDFViewer';
+import { useClaudeAPI } from '@/lib/api/claude';
+import { useStore, useCVStore } from '@/store';
+import { LoadingState } from '@/components/common/LoadingState';
+import { HTMLRecreator } from '@/lib/document-processing/html-recreator';
 
 interface HTMLBasedCVOptimizerProps {
   onComplete: () => void;
@@ -15,6 +15,7 @@ export function HTMLBasedCVOptimizer({ onComplete }: HTMLBasedCVOptimizerProps) 
   const [error, setError] = useState<string | null>(null);
   const [template, setTemplate] = useState<any>(null);
   const [htmlPreview, setHtmlPreview] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
   
   const { sendMessage, loading } = useClaudeAPI({
     temperature: 0.3,
@@ -35,7 +36,7 @@ export function HTMLBasedCVOptimizer({ onComplete }: HTMLBasedCVOptimizerProps) 
     `
   });
   
-  // Utiliser useStore pour les données en lecture seule
+  // Accès au store pour les données
   const { 
     originalContent: cvData, 
     optimizedContent: optimizedCV,
@@ -48,17 +49,16 @@ export function HTMLBasedCVOptimizer({ onComplete }: HTMLBasedCVOptimizerProps) 
     skills: jobSkills 
   } = useStore((state) => state.job);
   
-  const { analysis } = useStore((state) => state.matching);
+  const { analysis, matchedSkills } = useStore((state) => state.matching);
   
-  // Analyser le CV original pour créer le template HTML
+  // Préparation du template HTML
   useEffect(() => {
     async function analyzeOriginalCV() {
-      if (!cvData) {
-        return;
-      }
+      if (!cvData) return;
       
       try {
         setError(null);
+        setProgress(10);
         
         // Vérifier si nous avons les données Base64 (méthode préférée)
         if ('originalPdfBase64' in cvData && cvData.originalPdfBase64) {
@@ -69,6 +69,8 @@ export function HTMLBasedCVOptimizer({ onComplete }: HTMLBasedCVOptimizerProps) 
           // Générer un aperçu HTML sans optimisation
           const html = HTMLRecreator.generateHTML(extractedTemplate);
           setHtmlPreview(html);
+          
+          setProgress(30);
         }
         // Sinon, essayer avec l'ArrayBuffer si disponible
         else if ('originalArrayBuffer' in cvData && cvData.originalArrayBuffer) {
@@ -83,6 +85,8 @@ export function HTMLBasedCVOptimizer({ onComplete }: HTMLBasedCVOptimizerProps) 
             // Générer un aperçu HTML sans optimisation
             const html = HTMLRecreator.generateHTML(extractedTemplate);
             setHtmlPreview(html);
+            
+            setProgress(30);
           } catch (bufferError) {
             console.error('Erreur avec ArrayBuffer:', bufferError);
             setError('Erreur lors de l\'analyse du CV. Veuillez réimporter votre CV.');
@@ -110,6 +114,7 @@ export function HTMLBasedCVOptimizer({ onComplete }: HTMLBasedCVOptimizerProps) 
     
     setOptimizing(true);
     setError(null);
+    setProgress(40);
     
     try {
       // Extraire les sections du template pour les envoyer à Claude
@@ -124,7 +129,9 @@ export function HTMLBasedCVOptimizer({ onComplete }: HTMLBasedCVOptimizerProps) 
         });
       });
       
-      // Créer le prompt pour Claude en incluant chaque section
+      setProgress(50);
+      
+      // Créer le prompt pour Claude
       let prompt = `
         # OFFRE D'EMPLOI
         ${jobData.text}
@@ -160,13 +167,15 @@ export function HTMLBasedCVOptimizer({ onComplete }: HTMLBasedCVOptimizerProps) 
         \`\`\`
       `;
       
+      setProgress(70);
+      
       // Envoyer la requête à Claude
       const response = await sendMessage(prompt);
       
       // Extraire le JSON de la réponse
       const jsonMatch = response.content.match(/```json\s*([\s\S]*?)\s*```/) || 
-                         response.content.match(/\{[\s\S]*\}/);
-                         
+                       response.content.match(/\{[\s\S]*\}/);
+                       
       if (!jsonMatch) {
         throw new Error('Format de réponse incorrect');
       }
@@ -193,6 +202,8 @@ export function HTMLBasedCVOptimizer({ onComplete }: HTMLBasedCVOptimizerProps) 
         template: template,
         optimizedSections: optimizedSections
       });
+      
+      setProgress(100);
       
       // Passer à l'étape suivante
       onComplete();
@@ -223,7 +234,12 @@ export function HTMLBasedCVOptimizer({ onComplete }: HTMLBasedCVOptimizerProps) 
       
       {(loading || optimizing) ? (
         <div className="text-center py-12">
-          <Loader text="Optimisation de votre CV en cours... Cela peut prendre quelques instants." />
+          <LoadingState 
+            text="Optimisation de votre CV en cours..." 
+            subText="Cela peut prendre quelques instants" 
+            progress={progress}
+            showProgress={true}
+          />
         </div>
       ) : template ? (
         <div className="space-y-6">
@@ -272,39 +288,31 @@ export function HTMLBasedCVOptimizer({ onComplete }: HTMLBasedCVOptimizerProps) 
             </>
           )}
           
-          {/* Aperçu du CV dans un iframe */}
           {/* Aperçu du CV */}
-<div className="border rounded-md overflow-hidden">
-  <div className="bg-gray-100 px-4 py-3 border-b flex justify-between items-center">
-    <h3 className="font-medium">Aperçu du CV {optimizedCV ? 'optimisé' : 'original'}</h3>
-  </div>
-  
-  <div className="p-4 bg-white">
-    {cvData && 'originalPdfBase64' in cvData && cvData.originalPdfBase64 ? (
-      // Utiliser le nouveau composant PDFViewer avec les données Base64
-      <PDFViewer 
-        pdfData={cvData.originalPdfBase64} 
-        width={800}
-        height={700}
-      />
-    ) : cvData && 'originalArrayBuffer' in cvData && cvData.originalArrayBuffer ? (
-      // Fallback sur l'ArrayBuffer si Base64 n'est pas disponible
-      <PDFViewer 
-        pdfData={cvData.originalArrayBuffer} 
-        width={800}
-        height={700}
-      />
-    ) : (
-      <div className="text-center p-8">
-        <p className="text-red-500">Impossible d'afficher l'aperçu du CV. Veuillez réimporter votre CV.</p>
-      </div>
-    )}
-  </div>
-</div>
+          <div className="border rounded-md overflow-hidden">
+            <div className="bg-gray-100 px-4 py-3 border-b flex justify-between items-center">
+              <h3 className="font-medium">Aperçu du CV {optimizedCV ? 'optimisé' : 'original'}</h3>
+            </div>
+            
+            <div className="p-4 bg-white">
+              {htmlPreview ? (
+                <iframe 
+                  srcDoc={htmlPreview}
+                  title="CV Preview"
+                  className="w-full h-96 border-0"
+                  sandbox="allow-same-origin"
+                />
+              ) : (
+                <div className="text-center p-8">
+                  <p className="text-gray-500">Chargement de l'aperçu...</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       ) : (
         <div className="text-center py-12">
-          <Loader text="Analyse du format de votre CV en cours..." />
+          <LoadingState text="Analyse du format de votre CV en cours..." />
         </div>
       )}
       

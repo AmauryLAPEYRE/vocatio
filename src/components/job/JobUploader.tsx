@@ -1,9 +1,9 @@
-// src/components/job/JobUploader.tsx
+// src/components/job/JobUpLoadingState.tsx
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useClaudeAPI } from 'src/lib/api/claude';
 import { useStore, useJobStore } from 'src/store';
-import { Loader } from 'src/components/common/Loader';
+import { LoadingState } from '@/components/common/LoadingState';
 import { processDocument } from 'src/lib/document-processing/document-processor';
 
 interface JobUploaderProps {

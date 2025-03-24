@@ -1,99 +1,158 @@
-# Vocatio - Application d'optimisation de CV et génération de lettres de motivation
+Vocatio - Optimisation de CV et Génération de Lettres de Motivation
+Vocatio est une application frontend avancée qui permet aux utilisateurs d'optimiser leur CV et de générer des lettres de motivation personnalisées, en préservant parfaitement la mise en forme originale du CV. L'application utilise l'IA d'Anthropic Claude pour l'analyse et la génération de contenu, offrant une expérience sans friction et des résultats de haute qualité.
+Afficher l'image
+Fonctionnalités Principales
+📄 Préservation parfaite du format des CV
 
-Vocatio est une application frontend qui permet aux utilisateurs d'optimiser leur CV et de générer des lettres de motivation personnalisées pour chaque offre d'emploi, en utilisant l'IA d'Anthropic Claude pour l'analyse et la génération de contenu.
+Import de CV existants (PDF, DOCX)
+Analyse précise et reconstruction fidèle du format visuel (polices, couleurs, mise en page)
+Optimisation du contenu textuel sans altérer le design et la structure
+HTML/CSS généré proprement pour une représentation parfaite
 
-## Fonctionnalités principales
+💼 Analyse intelligente des offres d'emploi
 
-- Import de CV existants (PDF, DOCX)
-- Import d'offres d'emploi
-- Analyse et mise en correspondance des compétences avec les exigences du poste
-- Génération d'un CV optimisé conservant exactement le même format que l'original
-- Génération de lettres de motivation avec différents styles d'écriture
-- Export des documents finalisés en PDF
+Import et analyse des offres d'emploi
+Extraction automatique des compétences requises et mots-clés
+Détection des exigences et responsabilités principales
+Suggestion d'adaptations pertinentes pour votre candidature
 
-## Avantages clés
+🔍 Analyse de correspondance avancée
 
-- Traitement 100% côté client sans stockage de données
-- Respect absolu des informations originales (aucune falsification)
-- Interface intuitive et professionnelle
-- Optimisation pour différents types de postes
+Évaluation du degré de compatibilité entre votre profil et le poste
+Identification des points forts à mettre en avant
+Détection des compétences manquantes ou à renforcer
+Recommandations personnalisées pour augmenter vos chances
 
-## Stack technique
+✏️ Génération de lettres de motivation
 
-- Frontend: React 18 + Next.js 14 + Tailwind CSS
-- Gestion d'états: Zustand
-- Traitement de documents: PDF.js, mammoth.js (DOCX), jsPDF
-- IA/NLP: API Anthropic Claude via Vercel Edge Functions
-- Déploiement: Vercel avec CI/CD GitHub
-- Tests: Jest + React Testing Library
+Création de lettres adaptées à chaque offre spécifique
+Styles d'écriture variés (formel, créatif, technique, etc.)
+Options de personnalisation avancées (ton, longueur, structure)
+Mise en valeur intelligente de vos expériences pertinentes
 
-## Configuration et déploiement
+📊 Exportation haute qualité
 
-### Prérequis
+Export PDF fidèle au design original
+Options d'impression optimisées
+Conservation de toutes les polices et éléments visuels
 
-- Node.js 18+ et npm
-- Compte Vercel
-- Clé API Anthropic Claude
+Architecture Technique
+Vocatio est développé avec les technologies modernes suivantes :
+Frontend
 
-### Installation locale
+Framework: React 18 + Next.js 14
+Styles: Tailwind CSS
+Gestion d'état: Zustand
+UI/UX: Composants accessibles et responsive
 
-1. Cloner le dépôt
-   ```bash
-   git clone https://github.com/votre-compte/vocatio.git
-   cd vocatio
-   ```
+Traitement de Documents
 
-2. Installer les dépendances
-   ```bash
-   npm install
-   ```
+Analyse PDF: PDF.js avec extraction avancée de mise en forme
+Traitement DOCX: Mammoth.js avec préservation de structure
+Rendu HTML/CSS: Système personnalisé de recréation fidèle
+Export PDF: html2canvas + jsPDF optimisés
 
-3. Configurer les variables d'environnement
-   - Créer un fichier `.env.local` à la racine du projet
-   - Ajouter votre clé API Anthropic: `ANTHROPIC_API_KEY=votre_clé_api`
+IA/NLP
 
-4. Démarrer le serveur de développement
-   ```bash
-   npm run dev
-   ```
+Modèle: Anthropic Claude via API
+Infrastructure: Vercel Edge Functions
+Prompting: Techniques d'ingénierie de prompt avancées
 
-5. L'application sera disponible à l'adresse [http://localhost:3000](http://localhost:3000)
+Performance et Sécurité
 
-### Déploiement sur Vercel
+Optimisations: Chargement asynchrone, mise en cache, lazy loading
+Sécurité: Validation des fichiers, sanitisation HTML, protection CSRF
+Accessibilité: Conformité WCAG AA, navigation au clavier, support lecteurs d'écran
 
-1. Connectez votre dépôt GitHub à Vercel
-2. Configurez la variable d'environnement `ANTHROPIC_API_KEY` dans les paramètres du projet
-3. Déployez l'application
+Structure du Projet
+Copiersrc/
+├── components/          # Composants React organisés par fonctionnalité
+│   ├── common/          # Composants UI communs (optimisés et accessibles)
+│   ├── cv/              # Composants liés aux CV (avec préservation de format)
+│   ├── job/             # Composants liés aux offres d'emploi
+│   ├── letter/          # Composants liés aux lettres de motivation
+│   ├── matcher/         # Composants d'analyse d'adéquation
+│   └── export/          # Composants liés à l'exportation
+├── hooks/               # Hooks personnalisés centralisés
+│   ├── useOptimization.tsx
+│   ├── useLetterGeneration.tsx
+│   └── useError.tsx
+├── lib/
+│   ├── accessibility/   # Outils d'accessibilité
+│   ├── api/             # Intégrations API (Claude)
+│   ├── document-processing/ # Traitement avancé de documents
+│   ├── error/           # Gestion centralisée des erreurs
+│   ├── performance/     # Optimisations de performance
+│   └── security/        # Outils de sécurité
+├── pages/               # Pages Next.js et API routes
+├── store/               # Gestion d'état Zustand
+└── styles/              # Styles CSS
+Installation et Déploiement
+Prérequis
 
-## Utilisation
+Node.js 18+ et npm
+Compte Vercel
+Clé API Anthropic Claude
 
-1. Importez votre CV (formats PDF ou DOCX)
-2. Importez l'offre d'emploi pour laquelle vous souhaitez postuler
-3. L'application analysera automatiquement la correspondance entre votre profil et l'offre
-4. Générez un CV optimisé qui met en valeur vos compétences pertinentes
-5. Créez une lettre de motivation personnalisée dans le style de votre choix
-6. Exportez les documents finalisés au format PDF
+Installation locale
 
-## Développement
+Cloner le dépôt
+bashCopiergit clone https://github.com/votre-compte/vocatio.git
+cd vocatio
 
-### Structure du projet
+Installer les dépendances
+bashCopiernpm install
 
-Le projet suit une architecture modulaire avec une séparation claire des responsabilités :
-- `components/` : Composants React organisés par fonctionnalité
-- `lib/` : Utilitaires et fonctions partagées
-- `pages/` : Pages Next.js et API routes
-- `store/` : Gestion d'état global avec Zustand
-- `types/` : Types TypeScript pour le typage strict
-- `styles/` : Styles globaux et configuration Tailwind
+Configurer les variables d'environnement
 
-### Tests
+Créer un fichier .env.local à la racine du projet
+Ajouter votre clé API Anthropic: ANTHROPIC_API_KEY=votre_clé_api
 
-Exécuter les tests unitaires :
-```bash
-npm test
-```
 
+Démarrer le serveur de développement
+bashCopiernpm run dev
+
+L'application sera disponible à l'adresse http://localhost:3000
+
+Déploiement sur Vercel
+
+Connectez votre dépôt GitHub à Vercel
+Configurez la variable d'environnement ANTHROPIC_API_KEY dans les paramètres du projet
+Déployez l'application
+
+Optimisations et Performances
+Vocatio intègre de nombreuses optimisations pour garantir une expérience rapide et fluide :
+
+Préchargement intelligent des ressources critiques
+Mise en cache des traitements lourds pour éviter les répétitions
+Lazy loading des composants et images non critiques
+Traitement par lots pour les opérations intensives
+Compression et optimisation des ressources statiques
+
+Sécurité et Confidentialité
+La sécurité et la confidentialité des données sont des priorités absolues :
+
+Traitement 100% côté client - Aucune donnée sensible n'est stockée sur nos serveurs
+Validation de fichiers - Vérification complète des fichiers téléchargés
+Sanitisation HTML - Protection contre les injections XSS
+En-têtes de sécurité - Protection contre diverses vulnérabilités web
+Accès API sécurisé - Communication sécurisée avec l'API Claude
+
+Accessibilité
+Vocatio est conçu pour être accessible à tous les utilisateurs :
+
+Navigation au clavier complète
+Compatibilité avec les lecteurs d'écran
+Contraste de couleurs conforme aux normes WCAG AA
+Textes alternatifs pour tous les éléments visuels
+Messages d'erreur explicites et instructions claires
+
+Tests
+Exécuter les tests unitaires et d'intégration :
+bashCopiernpm test
 Exécuter les tests en mode watch :
-```bash
-npm run test:watch
-```
+bashCopiernpm run test:watch
+Contribution
+Consultez le fichier CONTRIBUTING.md pour les directives de contribution.
+Licence
+Ce projet est sous licence MIT. Voir le fichier LICENSE pour plus de détails.

@@ -1,8 +1,8 @@
-// src/components/common/FileUploader.tsx
+// src/components/common/FileUpLoadingState.tsx
 import React, { useCallback } from 'react';
 import { useDropzone, DropzoneOptions } from 'react-dropzone';
 
-interface FileUploaderProps extends Omit<DropzoneOptions, 'onDrop'> {
+interface FileUpLoadingStateProps extends Omit<DropzoneOptions, 'onDrop'> {
   onFileChange: (file: File) => void;
   label?: string;
   helpText?: string;
@@ -11,7 +11,7 @@ interface FileUploaderProps extends Omit<DropzoneOptions, 'onDrop'> {
   isLoading?: boolean;
 }
 
-export function FileUploader({
+export function FileUpLoadingState({
   onFileChange,
   label = 'Télécharger un fichier',
   helpText,
@@ -19,7 +19,7 @@ export function FileUploader({
   error,
   isLoading,
   ...dropzoneOptions
-}: FileUploaderProps) {
+}: FileUpLoadingStateProps) {
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
       onFileChange(acceptedFiles[0]);

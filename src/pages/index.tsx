@@ -1,11 +1,10 @@
-// src/pages/index.tsx
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { Stepper } from '@/components/common/Stepper';
 import { CVUploader } from '@/components/cv/CVUploader';
 import { JobUploader } from '@/components/job/JobUploader';
 import { MatchAnalysis } from '@/components/matcher/MatchAnalysis';
-import { HTMLBasedCVOptimizer } from '@/components/cv/HTMLBasedCVOptimizer'; // Nouveau composant
+import { HTMLBasedCVOptimizer } from '@/components/cv/HTMLBasedCVOptimizer';
 import { LetterGenerator } from '@/components/letter/LetterGenerator';
 import { DocumentsExporter } from '@/components/export/DocumentsExporter';
 import { useStore, useCVStore, useJobStore, useMatchingStore, useLetterStore } from '@/store';
@@ -77,7 +76,6 @@ export default function Home() {
       case 2:
         return <MatchAnalysis onComplete={goToNextStep} />;
       case 3:
-        // Utiliser le nouveau optimiseur qui préserve le format
         return <HTMLBasedCVOptimizer onComplete={goToNextStep} />;
       case 4:
         return <LetterGenerator onComplete={goToNextStep} />;
@@ -96,7 +94,7 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <main className="container mx-auto px-4 py-8 max-w-5xl">
+      <main id="main-content" className="container mx-auto px-4 py-8 max-w-5xl">
         <header className="mb-8 text-center">
           <h1 className="text-4xl font-bold text-blue-700 mb-2">Vocatio</h1>
           <p className="text-gray-600">Optimisez votre CV en préservant sa mise en page et créez des lettres de motivation ciblées</p>

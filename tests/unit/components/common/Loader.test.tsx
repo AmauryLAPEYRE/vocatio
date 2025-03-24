@@ -1,6 +1,6 @@
 // tests/unit/components/common/Loader.test.tsx
 import { render, screen } from '@testing-library/react';
-import { Loader } from '@/components/common/Loader';
+import { LoadingState } from '@/components/common/LoadingState';
 
 describe('Loader Component', () => {
   test('renders without text', () => {

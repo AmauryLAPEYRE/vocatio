@@ -38034,7 +38034,7 @@ class Catalog {
   }
 }
 
-;// ./src/core/object_loader.js
+;// ./src/core/object_LoadingState.js
 
 
 
@@ -38056,7 +38056,7 @@ function addChildren(node, nodesToVisit) {
     }
   }
 }
-class ObjectLoader {
+class ObjectLoadingState {
   constructor(dict, keys, xref) {
     this.dict = dict;
     this.keys = keys;
@@ -38095,7 +38095,7 @@ class ObjectLoader {
           currentNode = this.xref.fetch(currentNode);
         } catch (ex) {
           if (!(ex instanceof MissingDataException)) {
-            warn(`ObjectLoader._walk - requesting all data: "${ex}".`);
+            warn(`ObjectLoadingState._walk - requesting all data: "${ex}".`);
             this.refSet = null;
             const {
               manager
@@ -49500,8 +49500,8 @@ class Annotation {
       if (!resources) {
         return undefined;
       }
-      const objectLoader = new ObjectLoader(resources, keys, resources.xref);
-      return objectLoader.load().then(() => resources);
+      const objectLoadingState = new ObjectLoadingState(resources, keys, resources.xref);
+      return objectLoadingState.load().then(() => resources);
     });
   }
   async getOperatorList(evaluator, task, intent, annotationStorage) {
@@ -54649,8 +54649,8 @@ class Page {
   loadResources(keys) {
     this.resourcesPromise ||= this.pdfManager.ensure(this, "resources");
     return this.resourcesPromise.then(() => {
-      const objectLoader = new ObjectLoader(this.resources, keys, this.xref);
-      return objectLoader.load();
+      const objectLoadingState = new ObjectLoadingState(this.resources, keys, this.xref);
+      return objectLoadingState.load();
     });
   }
   getOperatorList({
@@ -55225,8 +55225,8 @@ class PDFDocument {
       return;
     }
     const keys = xfaImagesDict.getKeys();
-    const objectLoader = new ObjectLoader(xfaImagesDict, keys, this.xref);
-    await objectLoader.load();
+    const objectLoadingState = new ObjectLoadingState(xfaImagesDict, keys, this.xref);
+    await objectLoadingState.load();
     const xfaImages = new Map();
     for (const key of keys) {
       const stream = xfaImagesDict.get(key);
@@ -55245,8 +55245,8 @@ class PDFDocument {
     if (!(resources instanceof Dict)) {
       return;
     }
-    const objectLoader = new ObjectLoader(resources, ["Font"], this.xref);
-    await objectLoader.load();
+    const objectLoadingState = new ObjectLoadingState(resources, ["Font"], this.xref);
+    await objectLoadingState.load();
     const fontRes = resources.get("Font");
     if (!(fontRes instanceof Dict)) {
       return;

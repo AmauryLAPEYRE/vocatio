@@ -1,9 +1,9 @@
-// src/components/cv/CVUploader.tsx
+// src/components/cv/CVUpLoadingState.tsx
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { processDocument } from 'src/lib/document-processing/document-processor';
 import { useStore } from 'src/store';
-import { Loader } from 'src/components/common/Loader';
+import { LoadingState } from '@/components/common/LoadingState';
 import { useCVStore } from 'src/store/cv-store';
 
 interface CVUploaderProps {

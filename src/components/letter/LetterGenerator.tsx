@@ -1,11 +1,11 @@
 // src/components/letter/LetterGenerator.tsx
-import { useState, useEffect } from 'react';
-import { useClaudeAPI } from 'src/lib/api/claude';
-import { useStore, useLetterStore } from 'src/store';
-import { Loader } from 'src/components/common/Loader';
+import React, { useState, useEffect } from 'react';
+import { useClaudeAPI } from '@/lib/api/claude';
+import { useStore, useLetterStore } from '@/store';
+import { LoadingState } from '@/components/common/LoadingState';
 
 // Styles d'écriture disponibles pour les lettres de motivation
-const WRITING_STYLES = [
+const LETTER_STYLES = [
   { id: 'professional', label: 'Professionnel', description: 'Style formel et structuré, adapté à la plupart des entreprises' },
   { id: 'creative', label: 'Créatif', description: 'Style dynamique avec une touche personnelle, pour les secteurs créatifs' },
   { id: 'technical', label: 'Technique', description: 'Axé sur les compétences techniques, idéal pour les postes spécialisés' },
@@ -61,8 +61,6 @@ export function LetterGenerator({ onComplete }: LetterGeneratorProps) {
   
   // Utiliser directement useLetterStore pour les actions
   const setLetterContent = useLetterStore((state) => state.setLetterContent);
-  
-  // Continuer à utiliser useStore pour les données en lecture seule
   const content = useStore((state) => state.letter.content);
   
   // Génération automatique d'une première lettre
@@ -175,7 +173,7 @@ export function LetterGenerator({ onComplete }: LetterGeneratorProps) {
       
       {(loading || generating) && !content ? (
         <div className="text-center py-12">
-          <Loader text="Génération de votre lettre en cours... Cela peut prendre quelques instants." />
+          <LoadingState text="Génération de votre lettre en cours... Cela peut prendre quelques instants." />
         </div>
       ) : (
         <div className="space-y-6">
@@ -184,7 +182,7 @@ export function LetterGenerator({ onComplete }: LetterGeneratorProps) {
               <div className="bg-gray-100 px-4 py-3 border-b flex justify-between items-center">
                 <h3 className="font-medium">Lettre de motivation</h3>
                 <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                  Style: {WRITING_STYLES.find(style => style.id === selectedStyle)?.label || 'Personnalisé'}
+                  Style: {LETTER_STYLES.find(style => style.id === selectedStyle)?.label || 'Personnalisé'}
                 </span>
               </div>
               <div className="p-6 whitespace-pre-line">
@@ -198,7 +196,7 @@ export function LetterGenerator({ onComplete }: LetterGeneratorProps) {
               <div className="bg-gray-50 p-4 rounded-md">
                 <h3 className="font-medium mb-3">Style d'écriture</h3>
                 <div className="space-y-2">
-                  {WRITING_STYLES.map(style => (
+                  {LETTER_STYLES.map(style => (
                     <div key={style.id} className="flex items-start">
                       <input
                         type="radio"
