@@ -295,7 +295,7 @@ export function MatchAnalysis({ onComplete }: MatchAnalysisProps) {
       
       {(loading || analyzing) && !analysis ? (
         <div className="text-center py-12">
-          <Loader text="Analyse de correspondance en cours... Cela peut prendre quelques instants." />
+          <LoadingState text="Analyse de correspondance en cours... Cela peut prendre quelques instants." />
         </div>
       ) : analysis ? (
         renderAnalysisResult()

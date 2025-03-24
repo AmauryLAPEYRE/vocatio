@@ -1,4 +1,4 @@
-// src/components/cv/CVUpLoadingState.tsx
+// src/components/cv/CVUploader.tsx
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { processDocument } from 'src/lib/document-processing/document-processor';
@@ -83,7 +83,7 @@ export function CVUploader({ onComplete }: CVUploaderProps) {
         <input {...getInputProps()} />
         
         {loading ? (
-          <Loader text="Analyse du document en cours..." />
+          <LoadingState text="Analyse du document en cours..." />
         ) : (
           <>
             <svg 

@@ -4,23 +4,23 @@ import { LoadingState } from '@/components/common/LoadingState';
 
 describe('Loader Component', () => {
   test('renders without text', () => {
-    render(<Loader />);
+    render(<LoadingState />);
     expect(screen.getByRole('status')).toBeInTheDocument();
   });
   
   test('renders with text', () => {
-    render(<Loader text="Loading..." />);
+    render(<LoadingState text="Loading..." />);
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
   
   test('renders with different sizes', () => {
-    const { rerender } = render(<Loader size="small" />);
+    const { rerender } = render(<LoadingState size="small" />);
     expect(screen.getByRole('status')).toHaveClass('w-4');
     
-    rerender(<Loader size="medium" />);
+    rerender(<LoadingState size="medium" />);
     expect(screen.getByRole('status')).toHaveClass('w-8');
     
-    rerender(<Loader size="large" />);
+    rerender(<LoadingState size="large" />);
     expect(screen.getByRole('status')).toHaveClass('w-12');
   });
 });

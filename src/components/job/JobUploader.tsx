@@ -253,7 +253,7 @@ export function JobUploader({ onComplete }: JobUploaderProps) {
       
       {loading ? (
         <div className="text-center py-12">
-          <Loader text="Analyse de l'offre d'emploi en cours... Cela peut prendre quelques instants." />
+          <LoadingState text="Analyse de l'offre d'emploi en cours... Cela peut prendre quelques instants." />
         </div>
       ) : manualEntry ? (
         <form onSubmit={handleManualSubmit} className="space-y-4">

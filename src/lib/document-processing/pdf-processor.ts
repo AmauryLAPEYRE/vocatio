@@ -63,12 +63,26 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 }
 
 /**
- * Configure le worker PDF.js de manière optimisée pour la production
+ * Configure le worker PDF.js
  */
-function configurePDFWorker() {
-  if (typeof window !== 'undefined' && !pdfjs.GlobalWorkerOptions.workerSrc) {
-    const workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
-    pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
+export function configurePDFWorker() {
+  try {
+    if (typeof window !== 'undefined' && !pdfjs.GlobalWorkerOptions.workerSrc) {
+      // Utiliser Cloudflare CDN pour le worker
+      pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      console.log('PDF.js worker configuré avec CDN Cloudflare');
+    }
+  } catch (error) {
+    console.error('Erreur lors de la configuration du worker PDF.js:', error);
+    // Fallback vers le worker par défaut si disponible
+    try {
+      if (typeof window !== 'undefined') {
+        pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version || '3.11.174'}/build/pdf.worker.min.js`;
+        console.log('PDF.js worker configuré avec fallback jsdelivr');
+      }
+    } catch (fallbackError) {
+      console.error('Erreur lors de la configuration du worker fallback:', fallbackError);
+    }
   }
 }
 
@@ -79,6 +93,7 @@ function configurePDFWorker() {
  */
 export async function processPDFDocument(file: File): Promise<PDFDocumentInfo> {
   try {
+    // Configurer le worker avant tout traitement
     configurePDFWorker();
     
     // Convertir le fichier en ArrayBuffer
@@ -90,10 +105,11 @@ export async function processPDFDocument(file: File): Promise<PDFDocumentInfo> {
     // Options optimisées pour le chargement PDF
     const loadingOptions = {
       data: arrayBuffer,
-      useWorkerFetch: false,
-      standardFontDataUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/standard_fonts/`,
-      cMapUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/cmaps/`,
-      cMapPacked: true
+      useWorkerFetch: true,
+      isEvalSupported: true,
+      cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
+      cMapPacked: true,
+      standardFontDataUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/standard_fonts/'
     };
     
     // Charger le document PDF

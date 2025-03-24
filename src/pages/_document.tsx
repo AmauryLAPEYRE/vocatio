@@ -11,6 +11,13 @@ export default function Document() {
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" 
           rel="stylesheet"
         />
+        {/* Précharger le worker PDF.js pour améliorer les performances */}
+        <link
+          rel="preload"
+          href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"
+          as="script"
+          crossOrigin="anonymous"
+        />
       </Head>
       <body className="min-h-screen bg-gray-50">
         <Main />

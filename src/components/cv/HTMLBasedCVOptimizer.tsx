@@ -1,10 +1,10 @@
 // src/components/cv/HTMLBasedCVOptimizer.tsx
-
 import { useState, useEffect } from 'react';
 import { useClaudeAPI } from '@/lib/api/claude';
 import { useStore, useCVStore } from '@/store';
 import { LoadingState } from '@/components/common/LoadingState';
 import { HTMLRecreator } from '@/lib/document-processing/html-recreator';
+import { configurePDFWorker } from '@/lib/document-processing/pdf-processor';
 
 interface HTMLBasedCVOptimizerProps {
   onComplete: () => void;
@@ -16,6 +16,12 @@ export function HTMLBasedCVOptimizer({ onComplete }: HTMLBasedCVOptimizerProps) 
   const [template, setTemplate] = useState<any>(null);
   const [htmlPreview, setHtmlPreview] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
+  const [options, setOptions] = useState({
+    enhanceKeySkills: true,
+    adaptToJobDescription: true,
+    useProfessionalLanguage: true,
+    highlightAchievements: true
+  });
   
   const { sendMessage, loading } = useClaudeAPI({
     temperature: 0.3,
@@ -35,6 +41,12 @@ export function HTMLBasedCVOptimizer({ onComplete }: HTMLBasedCVOptimizerProps) 
       Tu dois fournir uniquement le contenu optimisé pour chaque section, sans modifier la structure.
     `
   });
+  
+  // Configurer le worker PDF.js à l'initialisation du composant
+  useEffect(() => {
+    // S'assurer que le worker PDF.js est correctement configuré
+    configurePDFWorker();
+  }, []);
   
   // Accès au store pour les données
   const { 
@@ -124,20 +136,53 @@ export function HTMLBasedCVOptimizer({ onComplete }: HTMLBasedCVOptimizerProps) 
       template.pages.forEach((page: any, pageIndex: number) => {
         page.sections.forEach((section: any) => {
           // Extraire le texte de la section
-          const sectionText = section.elements.map((e: any) => e.text).join(' ');
-          sections[section.id] = sectionText;
+          const sectionText = section.elements
+            .filter((e: any) => e.text && typeof e.text === 'string')
+            .map((e: any) => e.text)
+            .join(' ');
+          
+          if (sectionText.trim()) {
+            sections[section.id] = sectionText;
+          }
         });
       });
       
       setProgress(50);
+      
+      // Construire la partie des options du prompt
+      let optionsPrompt = '';
+      
+      if (options.enhanceKeySkills) {
+        optionsPrompt += 'Mets particulièrement en avant les compétences clés qui correspondent à l\'offre d\'emploi.\n';
+      }
+      
+      if (options.adaptToJobDescription) {
+        optionsPrompt += 'Adapte le vocabulaire et les descriptions pour mieux correspondre à celui utilisé dans l\'offre d\'emploi.\n';
+      }
+      
+      if (options.useProfessionalLanguage) {
+        optionsPrompt += 'Utilise un langage professionnel et des verbes d\'action percutants.\n';
+      }
+      
+      if (options.highlightAchievements) {
+        optionsPrompt += 'Mets l\'accent sur les réalisations concrètes et les résultats quantifiables.\n';
+      }
       
       // Créer le prompt pour Claude
       let prompt = `
         # OFFRE D'EMPLOI
         ${jobData.text}
         
+        ${matchedSkills ? `
+        # COMPÉTENCES REQUISES IDENTIFIÉES
+        ${matchedSkills.filter(skill => skill.inJob).map(skill => skill.skill).join(', ')}
+        ` : ''}
+        
         # ANALYSE DE CORRESPONDANCE
         ${analysis}
+        
+        # OPTIONS D'OPTIMISATION
+        ${optionsPrompt}
         
         # INSTRUCTIONS
         Optimise chaque section du CV ci-dessous pour mieux correspondre à l'offre d'emploi.
@@ -160,28 +205,45 @@ export function HTMLBasedCVOptimizer({ onComplete }: HTMLBasedCVOptimizerProps) 
         Réponds avec un objet JSON où les clés sont les IDs de section et les valeurs sont le contenu optimisé:
         \`\`\`json
         {
-          "section-1-0": "contenu optimisé de la section...",
-          "section-1-1": "contenu optimisé de la section...",
+          "section-0": "contenu optimisé de la section...",
+          "section-1": "contenu optimisé de la section...",
           ...
         }
         \`\`\`
       `;
       
-      setProgress(70);
+      setProgress(60);
       
       // Envoyer la requête à Claude
       const response = await sendMessage(prompt);
       
+      setProgress(80);
+      
       // Extraire le JSON de la réponse
-      const jsonMatch = response.content.match(/```json\s*([\s\S]*?)\s*```/) || 
-                       response.content.match(/\{[\s\S]*\}/);
-                       
+      let jsonMatch = response.content.match(/```json\s*([\s\S]*?)\s*```/);
+      
+      if (!jsonMatch) {
+        // Essayer de trouver juste un objet JSON sans les backticks
+        jsonMatch = response.content.match(/(\{[\s\S]*\})/);
+      }
+      
       if (!jsonMatch) {
         throw new Error('Format de réponse incorrect');
       }
       
+      let jsonContent = jsonMatch[1] || jsonMatch[0];
+      
+      // Nettoyer le JSON si nécessaire
+      jsonContent = jsonContent.trim();
+      if (!jsonContent.startsWith('{')) {
+        jsonContent = jsonContent.substring(jsonContent.indexOf('{'));
+      }
+      if (!jsonContent.endsWith('}')) {
+        jsonContent = jsonContent.substring(0, jsonContent.lastIndexOf('}') + 1);
+      }
+      
       // Parser le JSON des sections optimisées
-      const optimizedSections = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+      const optimizedSections = JSON.parse(jsonContent);
       
       // Générer le HTML optimisé
       const optimizedHTML = HTMLRecreator.generateHTML(template, optimizedSections);
@@ -205,8 +267,10 @@ export function HTMLBasedCVOptimizer({ onComplete }: HTMLBasedCVOptimizerProps) 
       
       setProgress(100);
       
-      // Passer à l'étape suivante
-      onComplete();
+      // Continuer à l'étape suivante
+      setTimeout(() => {
+        onComplete();
+      }, 1000);
     } catch (err) {
       console.error('Erreur lors de l\'optimisation du CV:', err);
       setError('Une erreur est survenue lors de l\'optimisation du CV. Veuillez réessayer.');
@@ -253,9 +317,107 @@ export function HTMLBasedCVOptimizer({ onComplete }: HTMLBasedCVOptimizerProps) 
                 <ul className="mt-2 text-sm text-blue-700">
                   <li>• {template.pages.length} page(s) détectée(s)</li>
                   <li>• {template.pages.reduce((acc: number, page: any) => acc + page.sections.length, 0)} section(s) identifiée(s)</li>
-                  <li>• {template.fonts.length} police(s) utilisée(s)</li>
                   <li>• Format: {template.pages[0]?.width}x{template.pages[0]?.height} points</li>
                 </ul>
+              </div>
+              
+              <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Options d'optimisation</h3>
+                
+                <div className="space-y-4">
+                  <div className="flex items-start">
+                    <input
+                      type="checkbox"
+                      id="enhanceKeySkills"
+                      checked={options.enhanceKeySkills}
+                      onChange={() => setOptions(prev => ({ ...prev, enhanceKeySkills: !prev.enhanceKeySkills }))}
+                      className="mt-1 mr-3"
+                    />
+                    <div>
+                      <label htmlFor="enhanceKeySkills" className="font-medium text-gray-700">
+                        Mettre en avant les compétences clés
+                      </label>
+                      <p className="text-sm text-gray-500">
+                        Accentue les compétences particulièrement pertinentes pour le poste visé.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start">
+                    <input
+                      type="checkbox"
+                      id="adaptToJobDescription"
+                      checked={options.adaptToJobDescription}
+                      onChange={() => setOptions(prev => ({ ...prev, adaptToJobDescription: !prev.adaptToJobDescription }))}
+                      className="mt-1 mr-3"
+                    />
+                    <div>
+                      <label htmlFor="adaptToJobDescription" className="font-medium text-gray-700">
+                        Adapter au vocabulaire de l'offre
+                      </label>
+                      <p className="text-sm text-gray-500">
+                        Utilise le même vocabulaire et la même terminologie que l'offre d'emploi.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start">
+                    <input
+                      type="checkbox"
+                      id="useProfessionalLanguage"
+                      checked={options.useProfessionalLanguage}
+                      onChange={() => setOptions(prev => ({ ...prev, useProfessionalLanguage: !prev.useProfessionalLanguage }))}
+                      className="mt-1 mr-3"
+                    />
+                    <div>
+                      <label htmlFor="useProfessionalLanguage" className="font-medium text-gray-700">
+                        Langage professionnel
+                      </label>
+                      <p className="text-sm text-gray-500">
+                        Utilise un langage professionnel et des verbes d'action percutants.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start">
+                    <input
+                      type="checkbox"
+                      id="highlightAchievements"
+                      checked={options.highlightAchievements}
+                      onChange={() => setOptions(prev => ({ ...prev, highlightAchievements: !prev.highlightAchievements }))}
+                      className="mt-1 mr-3"
+                    />
+                    <div>
+                      <label htmlFor="highlightAchievements" className="font-medium text-gray-700">
+                        Mettre en valeur les réalisations
+                      </label>
+                      <p className="text-sm text-gray-500">
+                        Met l'accent sur les réalisations concrètes et les résultats quantifiables.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Aperçu du CV original */}
+              <div className="border rounded-md overflow-hidden">
+                <div className="bg-gray-100 px-4 py-3 border-b">
+                  <h3 className="font-medium">Aperçu du CV original</h3>
+                </div>
+                <div className="p-0 bg-white h-[400px] overflow-auto">
+                  {htmlPreview ? (
+                    <iframe 
+                      srcDoc={htmlPreview}
+                      title="CV Preview"
+                      className="w-full h-full border-0"
+                      sandbox="allow-same-origin allow-scripts"
+                    />
+                  ) : (
+                    <div className="text-center p-8">
+                      <p className="text-gray-500">Chargement de l'aperçu...</p>
+                    </div>
+                  )}
+                </div>
               </div>
               
               <div className="flex justify-center">
@@ -264,51 +426,65 @@ export function HTMLBasedCVOptimizer({ onComplete }: HTMLBasedCVOptimizerProps) 
                   disabled={loading || optimizing}
                   className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed"
                 >
-                  Optimiser mon CV en préservant le format
+                  {loading || optimizing ? 'Optimisation en cours...' : 'Optimiser mon CV en préservant le format'}
                 </button>
               </div>
             </>
           ) : (
             <>
-              <div className="p-4 bg-green-50 border border-green-200 rounded-md">
-                <h3 className="font-medium text-green-800">Optimisation terminée</h3>
-                <p className="mt-1 text-sm text-green-700">
-                  Votre CV a été optimisé avec succès tout en préservant exactement sa mise en page originale.
-                </p>
+              <div className="bg-green-50 border border-green-200 rounded-md p-4">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-green-800">Optimisation terminée !</h3>
+                    <div className="mt-2 text-sm text-green-700">
+                      <p>Votre CV a été optimisé avec succès! Le contenu a été amélioré tout en préservant exactement votre mise en page d'origine.</p>
+                    </div>
+                  </div>
+                </div>
               </div>
               
-              <div className="flex justify-center">
+              <div className="border rounded-md overflow-hidden">
+                <div className="bg-gray-100 px-4 py-3 border-b">
+                  <h3 className="font-medium">Aperçu du CV optimisé</h3>
+                </div>
+                <div className="p-0 bg-white h-[500px] overflow-auto">
+                  {htmlPreview ? (
+                    <iframe 
+                      srcDoc={htmlPreview}
+                      title="CV Preview"
+                      className="w-full h-full border-0"
+                      sandbox="allow-same-origin allow-scripts"
+                    />
+                  ) : (
+                    <div className="text-center p-8">
+                      <p className="text-gray-500">Chargement de l'aperçu...</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex justify-center space-x-4">
                 <button
                   onClick={onComplete}
                   className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                 >
-                  Continuer
+                  Continuer à la lettre de motivation
+                </button>
+                
+                <button
+                  onClick={optimizeCV}
+                  className="px-6 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+                >
+                  Réoptimiser mon CV
                 </button>
               </div>
             </>
           )}
-          
-          {/* Aperçu du CV */}
-          <div className="border rounded-md overflow-hidden">
-            <div className="bg-gray-100 px-4 py-3 border-b flex justify-between items-center">
-              <h3 className="font-medium">Aperçu du CV {optimizedCV ? 'optimisé' : 'original'}</h3>
-            </div>
-            
-            <div className="p-4 bg-white">
-              {htmlPreview ? (
-                <iframe 
-                  srcDoc={htmlPreview}
-                  title="CV Preview"
-                  className="w-full h-96 border-0"
-                  sandbox="allow-same-origin"
-                />
-              ) : (
-                <div className="text-center p-8">
-                  <p className="text-gray-500">Chargement de l'aperçu...</p>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
       ) : (
         <div className="text-center py-12">
