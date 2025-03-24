@@ -25,7 +25,21 @@ describe('CV Store', () => {
   
   test('updates originalCV', () => {
     const mockCV = {
-      originalContent: { text: 'Test CV', metadata: { format: 'pdf' } },
+      originalContent: {
+        text: 'Test CV',
+        html: '<p>Test CV</p>', // Ajouter
+        metadata: { 
+          format: 'docx', // Changer de 'pdf' à 'docx'
+          pageCount: 1,
+          title: 'Test',
+          author: 'Author'
+        },
+        structure: {
+          sections: [],
+          keywords: []
+        },
+        originalArrayBuffer: new ArrayBuffer(0)
+      },
       fileName: 'cv.pdf',
       fileType: 'application/pdf',
       uploadDate: new Date('2023-01-01')

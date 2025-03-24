@@ -4,7 +4,7 @@ import { useDropzone } from 'react-dropzone';
 import { processDocument } from 'src/lib/document-processing/document-processor';
 import { useStore } from 'src/store';
 import { Loader } from 'src/components/common/Loader';
-import { useCVStore } from 'src/store';
+import { useCVStore } from 'src/store/cv-store';
 
 interface CVUploaderProps {
   onComplete: () => void;
@@ -13,7 +13,7 @@ interface CVUploaderProps {
 export function CVUploader({ onComplete }: CVUploaderProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const setCVData = useStore((state) => state.cv.setOriginalCV);
+  const setCVData = useCVStore((state) => state.setOriginalCV);
   
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;

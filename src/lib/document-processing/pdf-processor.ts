@@ -1,9 +1,9 @@
 // src/lib/document-processing/pdf-processor.ts
 import * as pdfjs from 'pdfjs-dist';
 
-// Correction de l'initialisation du worker pour Next.js
+// Configurer le worker pour qu'il pointe vers le fichier dans le dossier public
 if (typeof window !== 'undefined') {
-  pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+  pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.js';
 }
 
 interface PDFDocumentInfo {

@@ -1,5 +1,5 @@
 // tests/unit/hooks/useClaudeAPI.test.ts
-import { renderHook, act } from '@testing-library/react-hooks';
+import { renderHook, act } from '@testing-library/react';
 import { useClaudeAPI } from '@/lib/api/claude';
 
 // Mock de fetch

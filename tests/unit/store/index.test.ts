@@ -4,11 +4,11 @@ import { useCVStore } from '@/store/cv-store';
 import { useJobStore } from '@/store/job-store';
 import { useMatchingStore } from '@/store/matching-store';
 import { useLetterStore } from '@/store/letter-store';
-import { renderHook } from '@testing-library/react-hooks';
+import { renderHook } from '@testing-library/react';
 
 // Mocks des stores individuels
 jest.mock('@/store/cv-store', () => ({
-  useCVStore: jest.fn()
+  useCVStore: () => jest.fn().mockReturnValue({})
 }));
 
 jest.mock('@/store/job-store', () => ({
@@ -57,7 +57,7 @@ describe('Combined Store', () => {
     jest.clearAllMocks();
     
     // Configurer les mocks des stores
-    (useCVStore as jest.Mock).mockReturnValue(mockCVState);
+    useCVStore().mockReturnValue(mockCVState);
     (useJobStore as jest.Mock).mockReturnValue(mockJobState);
     (useMatchingStore as jest.Mock).mockReturnValue(mockMatchingState);
     (useLetterStore as jest.Mock).mockReturnValue(mockLetterState);
