@@ -41,8 +41,8 @@ interface DocumentTemplate {
     elements: (TextElement | ImageElement)[];
     sections: SectionElement[];
   }[];
-  palette: string[]; // Couleurs utilisées
-  fonts: string[];   // Polices utilisées
+  palette: string[]; 
+  fonts: string[];
   layout: {
     columns: number;
     margins: {
@@ -55,26 +55,56 @@ interface DocumentTemplate {
 }
 
 /**
+ * Convertit une chaîne Base64 en ArrayBuffer
+ */
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const binaryString = window.atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
+/**
  * Classe qui analyse un PDF et crée une représentation HTML/CSS fidèle
  */
 export class HTMLRecreator {
   /**
    * Analyse un PDF et extrait toutes les informations nécessaires pour le recréer
-   * @param pdfArrayBuffer Buffer du PDF à analyser
+   * @param pdfData Buffer du PDF ou chaîne Base64 à analyser
    * @returns Template du document avec tous les éléments
    */
-  static async analyzePDF(pdfArrayBuffer: ArrayBuffer): Promise<DocumentTemplate> {
-    console.log('Début de l\'analyse complète du PDF');
-    
+  static async analyzePDF(pdfData: ArrayBuffer | string): Promise<DocumentTemplate> {
     try {
-      // S'assurer que le worker PDF.js est correctement configuré
+      // Configuration du worker
       if (typeof window !== 'undefined' && !pdfjs.GlobalWorkerOptions.workerSrc) {
-        pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+        const workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+        pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
       }
       
+      // Préparer les données du PDF (ArrayBuffer)
+      let pdfBuffer: ArrayBuffer;
+      
+      // Si les données sont au format Base64, les convertir en ArrayBuffer
+      if (typeof pdfData === 'string') {
+        pdfBuffer = base64ToArrayBuffer(pdfData);
+      } else {
+        // Sinon, utiliser les données ArrayBuffer directement
+        pdfBuffer = pdfData;
+      }
+      
+      // Options optimisées pour le chargement PDF
+      const loadingOptions = {
+        data: pdfBuffer,
+        useWorkerFetch: false,
+        standardFontDataUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/standard_fonts/`,
+        cMapUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/cmaps/`,
+        cMapPacked: true
+      };
+      
       // Charger le document PDF
-      const pdfDocument = await pdfjs.getDocument({ data: pdfArrayBuffer }).promise;
-      console.log(`Document chargé, nombre de pages: ${pdfDocument.numPages}`);
+      const pdfDocument = await pdfjs.getDocument(loadingOptions).promise;
       
       const template: DocumentTemplate = {
         pages: [],
@@ -123,8 +153,8 @@ export class HTMLRecreator {
           const colorArray = item.color || [0, 0, 0];
           const r = Math.round(colorArray[0] * 255);
           const g = Math.round(colorArray[1] * 255);
-          const b = Math.round(colorArray[2] * 255);
-          const color = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+          const blueVal = Math.round(colorArray[2] * 255);
+          const color = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${blueVal.toString(16).padStart(2, '0')}`;
           
           // Ajouter à la palette de couleurs
           colorSet.add(color);
@@ -193,11 +223,9 @@ export class HTMLRecreator {
         });
       }
       
-      // Mise à jour du template avec les informations extraites
+      // Mise à jour du template
       template.palette = Array.from(colorSet);
       template.fonts = Array.from(fontSet);
-      
-      // Estimer le nombre de colonnes
       template.layout.columns = this.estimateColumnCount(template.pages[0]?.elements || []);
       
       // Estimer les marges
@@ -213,7 +241,6 @@ export class HTMLRecreator {
         const pageWidth = template.pages[0].width;
         const pageHeight = template.pages[0].height;
         
-        // Calcul des marges estimées (10% de marge si aucun élément n'est trouvé près des bords)
         template.layout.margins = {
           left: Math.min(...xPositions) || pageWidth * 0.1,
           right: pageWidth - (Math.max(...xPositions) || pageWidth * 0.9),
@@ -222,12 +249,10 @@ export class HTMLRecreator {
         };
       }
       
-      console.log('Analyse PDF complète terminée');
       return template;
-      
     } catch (error) {
       console.error('Erreur lors de l\'analyse du PDF:', error);
-      throw new Error(`Erreur lors de l'analyse du PDF: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+      throw error;
     }
   }
   
@@ -269,7 +294,6 @@ export class HTMLRecreator {
    * Estime le nombre de colonnes dans une page
    */
   private static estimateColumnCount(elements: any[]): number {
-    // Analyse simple : si les éléments texte sont répartis en groupes horizontaux distincts
     const textElements = elements.filter(e => 'text' in e);
     if (textElements.length < 5) return 1;
     
@@ -300,14 +324,21 @@ export class HTMLRecreator {
    * @returns Code HTML/CSS du document recréé
    */
   static generateHTML(template: DocumentTemplate, optimizedSections?: Record<string, string>): string {
-    console.log('Génération du HTML à partir du template');
-    
+    // CSS amélioré avec meilleure visibilité et débogage
     const css = `
+      body, html {
+        margin: 0;
+        padding: 0;
+        background-color: white;
+        font-family: sans-serif;
+        color: black;
+      }
+      
       .pdf-document {
         position: relative;
-        font-family: sans-serif;
         margin: 0 auto;
         background-color: white;
+        overflow: visible;
       }
       
       .pdf-page {
@@ -315,15 +346,30 @@ export class HTMLRecreator {
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         background-color: white;
         margin: 20px auto;
-        overflow: hidden;
+        padding: 0;
+        overflow: visible;
+        border: 1px solid #ddd;
       }
       
       .pdf-element {
         position: absolute;
         white-space: pre;
         transform-origin: left top;
+        overflow: visible;
+        /* Pour débogage, décommentez ces lignes: */
+        /*border: 1px solid rgba(255, 0, 0, 0.1);
+        background-color: rgba(255, 255, 0, 0.05);*/
+        z-index: 1;
       }
       
+      .pdf-container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+      }
+      
+      /* Média queries pour l'impression */
       @media print {
         body { margin: 0; }
         .pdf-page { margin: 0; page-break-after: always; box-shadow: none; }
@@ -331,9 +377,10 @@ export class HTMLRecreator {
     `;
     
     let html = `<!DOCTYPE html>
-    <html>
+    <html lang="fr">
     <head>
       <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Document recréé</title>
       <style>${css}</style>
     </head>
@@ -343,7 +390,8 @@ export class HTMLRecreator {
     // Pour chaque page du template
     for (const page of template.pages) {
       html += `
-        <div class="pdf-page" style="width: ${page.width}px; height: ${page.height}px;">`;
+        <div class="pdf-page" style="width: ${page.width}px; height: ${page.height}px;">
+          <div class="pdf-container">`;
       
       // Ajouter chaque élément
       for (const element of page.elements) {
@@ -358,29 +406,33 @@ export class HTMLRecreator {
           if (optimizedSections) {
             for (const section of page.sections) {
               if (optimizedSections[section.id] && section.elements.includes(textElement)) {
-                // Simplification : remplacer tout le texte de la section
-                // Une implémentation plus avancée ferait une correspondance plus précise
                 content = optimizedSections[section.id];
                 break;
               }
             }
           }
           
-          // Créer le style pour l'élément
+          // Créer le style pour l'élément avec valeurs de sécurité par défaut
           const transform = textElement.transform ? 
-            `matrix(${textElement.transform[0]}, ${textElement.transform[1]}, ${textElement.transform[2]}, ${textElement.transform[3]}, ${textElement.transform[4]}, ${textElement.transform[5]})` : 
+            `matrix(${textElement.transform[0] || 1}, ${textElement.transform[1] || 0}, ${textElement.transform[2] || 0}, ${textElement.transform[3] || 1}, ${textElement.transform[4] || 0}, ${textElement.transform[5] || 0})` : 
             'none';
+          
+          // S'assurer que le contenu est visible et contient quelque chose
+          const safeContent = content || ' ';
           
           html += `
             <div class="pdf-element" style="
               left: ${textElement.x}px;
               top: ${textElement.y}px;
-              font-family: '${textElement.fontFamily}', sans-serif;
-              font-size: ${textElement.fontSize}px;
-              font-weight: ${textElement.fontWeight};
-              color: ${textElement.color};
+              font-family: '${textElement.fontFamily.replace(/['"<>]/g, '')}, sans-serif';
+              font-size: ${textElement.fontSize || 12}px;
+              font-weight: ${textElement.fontWeight || 'normal'};
+              color: ${textElement.color || 'black'};
               transform: ${transform};
-            ">${content}</div>`;
+              min-width: 4px;
+              min-height: 4px;
+              text-align: left;
+            ">${safeContent}</div>`;
         } else if ('src' in element) {
           // Élément image
           const imageElement = element as ImageElement;
@@ -394,12 +446,31 @@ export class HTMLRecreator {
         }
       }
       
+      // Ajouter un marqueur pour débogage
       html += `
+        <div style="position:absolute; top:10px; left:10px; width:20px; height:20px; background:red; z-index:9999;"></div>
+      `;
+      
+      html += `
+          </div>
         </div>`;
     }
     
     html += `
       </div>
+      <script>
+        // Script pour forcer le rendu des éléments
+        document.addEventListener('DOMContentLoaded', function() {
+          setTimeout(function() {
+            const elements = document.querySelectorAll('.pdf-element');
+            elements.forEach(function(el) {
+              // Force reflow
+              el.style.opacity = '0.999';
+              setTimeout(() => { el.style.opacity = '1'; }, 10);
+            });
+          }, 100);
+        });
+      </script>
     </body>
     </html>`;
     
@@ -428,8 +499,6 @@ export class HTMLRecreator {
         // Si nous avons du contenu optimisé pour cette section
         if (optimizedContent[sectionId]) {
           // Remplacer le texte de tous les éléments de cette section
-          // Une implémentation plus avancée analyserait et distribuerait le texte optimisé
-          // entre les différents éléments de la section
           for (const element of section.elements) {
             element.text = optimizedContent[sectionId];
           }

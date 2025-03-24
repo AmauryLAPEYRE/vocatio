@@ -4,6 +4,7 @@ import { useClaudeAPI } from 'src/lib/api/claude';
 import { useStore, useCVStore } from 'src/store';
 import { Loader } from 'src/components/common/Loader';
 import { HTMLRecreator } from 'src/lib/document-processing/html-recreator';
+import { PDFViewer } from '../pdf/PDFViewer';
 
 interface HTMLBasedCVOptimizerProps {
   onComplete: () => void;
@@ -52,26 +53,43 @@ export function HTMLBasedCVOptimizer({ onComplete }: HTMLBasedCVOptimizerProps) 
   // Analyser le CV original pour créer le template HTML
   useEffect(() => {
     async function analyzeOriginalCV() {
-      if (!cvData || !('originalArrayBuffer' in cvData) || !cvData.originalArrayBuffer) {
+      if (!cvData) {
         return;
       }
       
       try {
-        console.log('Analyse du CV original pour recréation HTML');
         setError(null);
         
-        // Récupérer l'ArrayBuffer du PDF original
-        const arrayBuffer = cvData.originalArrayBuffer;
-        
-        // Analyser le PDF pour créer le template
-        const extractedTemplate = await HTMLRecreator.analyzePDF(arrayBuffer);
-        setTemplate(extractedTemplate);
-        
-        // Générer un aperçu HTML sans optimisation
-        const html = HTMLRecreator.generateHTML(extractedTemplate);
-        setHtmlPreview(html);
-        
-        console.log('Template et aperçu HTML créés avec succès');
+        // Vérifier si nous avons les données Base64 (méthode préférée)
+        if ('originalPdfBase64' in cvData && cvData.originalPdfBase64) {
+          // Analyser le PDF en utilisant les données Base64
+          const extractedTemplate = await HTMLRecreator.analyzePDF(cvData.originalPdfBase64);
+          setTemplate(extractedTemplate);
+          
+          // Générer un aperçu HTML sans optimisation
+          const html = HTMLRecreator.generateHTML(extractedTemplate);
+          setHtmlPreview(html);
+        }
+        // Sinon, essayer avec l'ArrayBuffer si disponible
+        else if ('originalArrayBuffer' in cvData && cvData.originalArrayBuffer) {
+          try {
+            // Créer une copie pour éviter les problèmes de détachement
+            const buffer = cvData.originalArrayBuffer.slice(0);
+            
+            // Analyser le PDF pour créer le template
+            const extractedTemplate = await HTMLRecreator.analyzePDF(buffer);
+            setTemplate(extractedTemplate);
+            
+            // Générer un aperçu HTML sans optimisation
+            const html = HTMLRecreator.generateHTML(extractedTemplate);
+            setHtmlPreview(html);
+          } catch (bufferError) {
+            console.error('Erreur avec ArrayBuffer:', bufferError);
+            setError('Erreur lors de l\'analyse du CV. Veuillez réimporter votre CV.');
+          }
+        } else {
+          setError('Format de CV non pris en charge pour la préservation du format.');
+        }
       } catch (err) {
         console.error('Erreur lors de l\'analyse pour recréation HTML:', err);
         setError('Erreur lors de l\'analyse du CV pour la préservation du format.');
@@ -171,9 +189,9 @@ export function HTMLBasedCVOptimizer({ onComplete }: HTMLBasedCVOptimizerProps) 
         originalFormat: 'html',
         optimizationDate: new Date(),
         tokenUsage: response.tokenUsage,
-        formattedHTML: optimizedHTML, // Stocke la version HTML complète
-        template: template, // Stocke le template pour l'export
-        optimizedSections: optimizedSections // Stocke les sections optimisées
+        formattedHTML: optimizedHTML,
+        template: template,
+        optimizedSections: optimizedSections
       });
       
       // Passer à l'étape suivante
@@ -255,21 +273,34 @@ export function HTMLBasedCVOptimizer({ onComplete }: HTMLBasedCVOptimizerProps) 
           )}
           
           {/* Aperçu du CV dans un iframe */}
-          {htmlPreview && (
-            <div className="border rounded-md overflow-hidden">
-              <div className="bg-gray-100 px-4 py-3 border-b">
-                <h3 className="font-medium">Aperçu du CV {optimizedCV ? 'optimisé' : 'original'}</h3>
-              </div>
-              <div className="p-4">
-                <iframe
-                  srcDoc={htmlPreview}
-                  title="Aperçu du CV"
-                  className="w-full border h-[700px]"
-                  sandbox="allow-same-origin"
-                />
-              </div>
-            </div>
-          )}
+          {/* Aperçu du CV */}
+<div className="border rounded-md overflow-hidden">
+  <div className="bg-gray-100 px-4 py-3 border-b flex justify-between items-center">
+    <h3 className="font-medium">Aperçu du CV {optimizedCV ? 'optimisé' : 'original'}</h3>
+  </div>
+  
+  <div className="p-4 bg-white">
+    {cvData && 'originalPdfBase64' in cvData && cvData.originalPdfBase64 ? (
+      // Utiliser le nouveau composant PDFViewer avec les données Base64
+      <PDFViewer 
+        pdfData={cvData.originalPdfBase64} 
+        width={800}
+        height={700}
+      />
+    ) : cvData && 'originalArrayBuffer' in cvData && cvData.originalArrayBuffer ? (
+      // Fallback sur l'ArrayBuffer si Base64 n'est pas disponible
+      <PDFViewer 
+        pdfData={cvData.originalArrayBuffer} 
+        width={800}
+        height={700}
+      />
+    ) : (
+      <div className="text-center p-8">
+        <p className="text-red-500">Impossible d'afficher l'aperçu du CV. Veuillez réimporter votre CV.</p>
+      </div>
+    )}
+  </div>
+</div>
         </div>
       ) : (
         <div className="text-center py-12">

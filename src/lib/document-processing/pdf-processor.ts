@@ -22,29 +22,9 @@ interface PDFMetadataInfo {
   [key: string]: any;
 }
 
-interface StyleInfo {
-  fontFamily: string;
-  fontSize: number;
-  fontWeight: string;
-  color: string;
-  position: {
-    x: number;
-    y: number;
-    pageIndex: number;
-  };
-}
-
-interface TextElementWithStyle {
-  text: string;
-  style: StyleInfo;
-  isHeader?: boolean;
-  isListItem?: boolean;
-  sectionLevel?: number; // 1 pour titre principal, 2 pour sous-titre, etc.
-}
-
 interface PDFDocumentInfo {
   text: string;
-  html: string; // HTML version of the document with styling
+  html: string;
   metadata: {
     title?: string;
     author?: string;
@@ -56,7 +36,6 @@ interface PDFDocumentInfo {
     sections: {
       title: string;
       content: string;
-      elements: TextElementWithStyle[]; // Elements with their original styling
     }[];
     keywords: string[];
     layout: {
@@ -68,61 +47,67 @@ interface PDFDocumentInfo {
     };
   };
   originalArrayBuffer: ArrayBuffer;
-  // Nouvelle propriété pour stocker le template complet
-  originalTemplate: {
-    elements: TextElementWithStyle[];
-    layout: {
-      pageSize: { width: number; height: number };
-      margins: { top: number; right: number; bottom: number; left: number };
-      columns: number;
-      headerHeight?: number;
-      footerHeight?: number;
-    };
-    colors: string[];
-    fonts: string[];
-  };
-}
-
-// Configurer le worker
-if (typeof window !== 'undefined') {
-  pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+  originalPdfBase64: string; // Nouvelle propriété pour stocker le PDF en Base64
 }
 
 /**
- * Extrait le texte, les styles et la structure d'un fichier PDF
+ * Convertit un ArrayBuffer en chaîne Base64
+ */
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const binary = [];
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary.push(String.fromCharCode(bytes[i]));
+  }
+  return window.btoa(binary.join(''));
+}
+
+/**
+ * Configure le worker PDF.js de manière optimisée pour la production
+ */
+function configurePDFWorker() {
+  if (typeof window !== 'undefined' && !pdfjs.GlobalWorkerOptions.workerSrc) {
+    const workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+    pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
+  }
+}
+
+/**
+ * Extrait le texte et les métadonnées d'un fichier PDF
  * @param file Fichier PDF à traiter
- * @returns Informations complètes sur le document PDF avec styles
+ * @returns Informations complètes sur le document PDF
  */
 export async function processPDFDocument(file: File): Promise<PDFDocumentInfo> {
   try {
-    console.log('Début du traitement amélioré du PDF:', file.name);
+    configurePDFWorker();
     
     // Convertir le fichier en ArrayBuffer
     const arrayBuffer = await file.arrayBuffer();
     
+    // Convertir l'ArrayBuffer en Base64 pour éviter les problèmes de détachement
+    const base64Data = arrayBufferToBase64(arrayBuffer);
+    
+    // Optimisations pour le chargement PDF
+    const loadingOptions = {
+      data: arrayBuffer,
+      useWorkerFetch: false,
+      standardFontDataUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/standard_fonts/`,
+      cMapUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/cmaps/`,
+      cMapPacked: true
+    };
+    
     // Charger le document PDF
-    const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
-    const pdfDocument = await loadingTask.promise;
-    console.log('Document PDF chargé, nombre de pages:', pdfDocument.numPages);
+    const pdfDocument = await pdfjs.getDocument(loadingOptions).promise;
     
     // Extraire les métadonnées
     const metadata = await pdfDocument.getMetadata();
     const metadataInfo = metadata.info as PDFMetadataInfo || {};
     
-    // Stocker toutes les informations de texte avec style
+    // Variables pour stocker le texte et structures
     let fullText = '';
     let htmlContent = '<div class="pdf-document">';
-    const allElements: TextElementWithStyle[] = [];
-    const sections: PDFDocumentInfo['structure']['sections'] = [];
-    const keywords: Set<string> = new Set();
-    const colors: Set<string> = new Set();
-    const fonts: Set<string> = new Set();
-    
-    // Analyse de la mise en page
-    let averageWordsPerLine = 0;
-    let wordCount = 0;
-    let lineCount = 0;
-    const yPositions: number[] = [];
+    const sections: {title: string, content: string}[] = [];
+    const keywords = new Set<string>();
     
     // Traiter chaque page
     for (let i = 1; i <= pdfDocument.numPages; i++) {
@@ -130,209 +115,101 @@ export async function processPDFDocument(file: File): Promise<PDFDocumentInfo> {
       const viewport = page.getViewport({ scale: 1.0 });
       htmlContent += `<div class="pdf-page" style="width:${viewport.width}px; height:${viewport.height}px; position:relative;">`;
       
-      // Extraire le texte et les informations de style
+      // Extraire le texte
       const textContent = await page.getTextContent();
       
-      // Analyser et stocker chaque élément de texte avec son style
+      let pageText = '';
       for (let j = 0; j < textContent.items.length; j++) {
         const item = textContent.items[j] as TextItem;
         
-        if (!item.str || typeof item.str !== 'string') continue;
-        
-        // Extraire les informations de style
-        const transform = item.transform || [1, 0, 0, 1, 0, 0];
-        const x = transform[4];
-        const y = transform[5];
-        yPositions.push(y);
-        
-        // Estimer la taille de police
-        const fontSize = Math.sqrt(Math.pow(transform[0], 2) + Math.pow(transform[1], 2)) * 12;
-        
-        // Déterminer la couleur du texte (si disponible)
-        let colorStr = '#000000'; // Noir par défaut
-        if (item.color && item.color.length >= 3) {
-          const r = Math.round(item.color[0] * 255);
-          const g = Math.round(item.color[1] * 255);
-          const b = Math.round(item.color[2] * 255);
-          colorStr = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-          colors.add(colorStr);
+        if (item.str) {
+          pageText += item.str + (item.hasEOL ? '\n' : ' ');
+          
+          // Ajouter au HTML
+          const transform = item.transform || [1, 0, 0, 1, 0, 0];
+          const x = transform[4];
+          const y = transform[5];
+          
+          htmlContent += `<div style="position:absolute; left:${x}px; top:${viewport.height - y}px;">${item.str}</div>`;
         }
-        
-        // Déterminer la police
-        const fontFamily = item.fontName || 'sans-serif';
-        fonts.add(fontFamily);
-        
-        // Estimer si c'est un titre
-        const isHeader = fontSize > 14;
-        
-        // Suivre les statistiques de mots et lignes
-        const words = item.str.split(/\s+/).filter(w => w.length > 0);
-        wordCount += words.length;
-        if (item.hasEOL) lineCount++;
-        
-        // Créer l'élément avec style
-        const element: TextElementWithStyle = {
-          text: item.str,
-          style: {
-            fontFamily: fontFamily,
-            fontSize: fontSize,
-            fontWeight: fontFamily.toLowerCase().includes('bold') ? 'bold' : 'normal',
-            color: colorStr,
-            position: {
-              x,
-              y,
-              pageIndex: i - 1
-            }
-          },
-          isHeader,
-          sectionLevel: isHeader ? (fontSize > 18 ? 1 : 2) : 0
-        };
-        
-        allElements.push(element);
-        
-        // Ajouter au texte complet
-        fullText += item.str + (item.hasEOL ? '\n' : ' ');
-        
-        // Ajouter à la version HTML
-        htmlContent += `<div style="position:absolute; left:${x}px; top:${viewport.height - y}px; font-family:'${fontFamily}'; font-size:${fontSize}px; color:${colorStr}; ${fontFamily.toLowerCase().includes('bold') ? 'font-weight:bold;' : ''}">${item.str}</div>`;
       }
       
-      htmlContent += '</div>'; // Fin de la page
-    }
-    
-    htmlContent += '</div>'; // Fin du document
-    
-    // Calculer le nombre moyen de mots par ligne
-    if (lineCount > 0) {
-      averageWordsPerLine = wordCount / lineCount;
-    }
-    
-    // Estimer le nombre de colonnes
-    const columns = averageWordsPerLine < 8 ? 2 : 1;
-    
-    // Détecter l'en-tête et le pied de page
-    const yValues = new Set(yPositions);
-    const sortedY = Array.from(yValues).sort((a, b) => a - b);
-    const hasHeader = sortedY.length > 5;
-    const hasFooter = sortedY.length > 5;
-    
-    // Analyser les sections
-    let currentSection = { title: 'Document', content: '', elements: [] as TextElementWithStyle[] };
-    
-    for (const element of allElements) {
-      // Si c'est un titre, commencer une nouvelle section
-      if (element.isHeader && element.text.trim().length > 0) {
-        // Sauvegarder la section précédente si elle a du contenu
-        if (currentSection.content.trim().length > 0 || currentSection.elements.length > 0) {
-          sections.push({ ...currentSection });
+      fullText += pageText;
+      htmlContent += '</div>';
+      
+      // Analyser le texte pour trouver des sections
+      const paragraphs = pageText.split('\n\n').filter(p => p.trim().length > 0);
+      for (const paragraph of paragraphs) {
+        if (paragraph.length > 30) {
+          const lines = paragraph.split('\n');
+          const title = lines[0].trim();
+          const content = lines.slice(1).join('\n').trim();
+          
+          if (title && content) {
+            sections.push({ title, content });
+          }
         }
-        
-        // Commencer une nouvelle section
-        currentSection = {
-          title: element.text.trim(),
-          content: '',
-          elements: [element]
-        };
-      } else {
-        // Ajouter à la section en cours
-        currentSection.content += element.text + ' ';
-        currentSection.elements.push(element);
       }
     }
     
-    // Ajouter la dernière section
-    if (currentSection.content.trim().length > 0 || currentSection.elements.length > 0) {
-      sections.push(currentSection);
-    }
+    htmlContent += '</div>';
     
-    // Déterminer les couleurs principales (les plus utilisées)
-    const colorCounts: Record<string, number> = {};
-    for (const element of allElements) {
-      colorCounts[element.style.color] = (colorCounts[element.style.color] || 0) + 1;
-    }
+    // Détection du layout
+    const columns = fullText.split('\n').length > 0 && 
+                   fullText.split('\n')[0].length < 50 ? 2 : 1;
+    const hasHeader = true;
+    const hasFooter = true;
     
-    // Trier les couleurs par fréquence
-    const sortedColors = Object.entries(colorCounts)
-      .sort((a, b) => b[1] - a[1])
-      .map(([color]) => color);
-    
-    const mainColor = sortedColors[0] || '#000000';
-    const secondaryColor = sortedColors[1] || '#666666';
-    
-    // Extraire les mots-clés potentiels pour l'analyse
-    const extractKeywords = (text: string): string[] => {
-      const words = text.toLowerCase()
-        .split(/\s+/)
-        .filter(word => word.length > 3)
-        .map(word => word.replace(/[.,;:!?()[\]{}""'']/g, ''));
-        
-      const skillKeywords = [
-        'développement', 'development', 'javascript', 'python', 'java',
-        'cloud', 'aws', 'azure', 'gcp', 'devops', 'docker', 'kubernetes',
-        'agile', 'scrum', 'kanban', 'marketing', 'vente', 'sales', 'management'
-      ];
-      
-      return words.filter(word => 
-        skillKeywords.includes(word) || 
-        skillKeywords.some(keyword => word.includes(keyword))
-      );
-    };
-    
-    // Ajouter des mots-clés à partir du texte complet
-    for (const keyword of extractKeywords(fullText)) {
-      keywords.add(keyword);
-    }
-    
-    // Créer le template original
-    const originalTemplate = {
-      elements: allElements,
-      layout: {
-        pageSize: {
-          width: pdfDocument.numPages > 0 ? 
-            (await pdfDocument.getPage(1)).getViewport({ scale: 1.0 }).width : 595, // A4 default
-          height: pdfDocument.numPages > 0 ? 
-            (await pdfDocument.getPage(1)).getViewport({ scale: 1.0 }).height : 842 // A4 default
-        },
-        margins: { top: 50, right: 50, bottom: 50, left: 50 }, // Estimation par défaut
-        columns
-      },
-      colors: Array.from(colors),
-      fonts: Array.from(fonts)
-    };
-    
-    console.log('Traitement complet du PDF terminé');
-    
-    // Créer l'objet de résultat complet
-    const documentInfo: PDFDocumentInfo = {
+    // Créer et retourner l'objet final
+    return {
       text: fullText,
       html: htmlContent,
       metadata: {
         title: metadataInfo.Title,
         author: metadataInfo.Author,
-        creationDate: metadataInfo.CreationDate 
-          ? new Date(metadataInfo.CreationDate) 
-          : undefined,
+        creationDate: metadataInfo.CreationDate ? new Date(metadataInfo.CreationDate) : undefined,
         pageCount: pdfDocument.numPages,
         format: 'pdf'
       },
       structure: {
-        sections,
-        keywords: Array.from(keywords),
+        sections: sections.length > 0 ? sections : [{ title: 'Document', content: fullText }],
+        keywords: extractKeywords(fullText),
         layout: {
           columns,
           hasHeader,
-          hasFooter,
-          mainColor,
-          secondaryColor
+          hasFooter
         }
       },
       originalArrayBuffer: arrayBuffer,
-      originalTemplate
+      originalPdfBase64: base64Data
     };
-    
-    return documentInfo;
   } catch (error) {
     console.error('Erreur lors du traitement du PDF:', error);
-    throw new Error(`Erreur lors du traitement du PDF: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+    throw error;
   }
+}
+
+/**
+ * Extrait des mots-clés potentiels du texte
+ */
+function extractKeywords(text: string): string[] {
+  const keywords = new Set<string>();
+  const words = text.toLowerCase()
+    .split(/\s+/)
+    .filter(word => word.length > 3)
+    .map(word => word.replace(/[.,;:!?()[\]{}""'']/g, ''));
+    
+  const skillKeywords = [
+    'développement', 'javascript', 'python', 'java', 'react', 'angular',
+    'cloud', 'aws', 'azure', 'gcp', 'devops', 'docker', 'kubernetes',
+    'agile', 'scrum', 'kanban', 'marketing', 'vente', 'management'
+  ];
+  
+  for (const word of words) {
+    if (skillKeywords.includes(word) || skillKeywords.some(keyword => word.includes(keyword))) {
+      keywords.add(word);
+    }
+  }
+  
+  return Array.from(keywords);
 }
