@@ -142,7 +142,7 @@ export class HTMLRecreator {
           
           // Calculer la position et la taille
           const x = e;
-          const y = viewport.height - f; // Inverser la coordonnée y
+          const y = f; // Inverser la coordonnée y
           
           // Estimer la taille de police et l'angle
           const fontSize = Math.sqrt(a * a + b * b) * 12;
