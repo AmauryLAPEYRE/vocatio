@@ -1,4 +1,6 @@
 // src/components/ui/FileUpload.tsx
+'use client';
+
 import React, { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { twMerge } from 'tailwind-merge';

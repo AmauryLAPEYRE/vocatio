@@ -1,5 +1,6 @@
 // src/components/job-upload/JobDescription.tsx
 'use client';
+
 import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';

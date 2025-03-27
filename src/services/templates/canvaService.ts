@@ -144,7 +144,7 @@ export class CanvaService {
       const response = await axios.post(
         'https://api.anthropic.com/v1/messages',
         {
-          model: 'claude-3-haiku-20240307',
+          model: 'claude-3-7-sonnet-20250219',
           messages: [
             {
               role: 'user',

@@ -1,4 +1,6 @@
 // src/components/template-selector/TemplateSelector.tsx
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/Card';

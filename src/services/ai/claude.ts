@@ -30,7 +30,7 @@ export async function callAI(prompt: string, options: AnthropicOptions = {}): Pr
     const response = await axios.post<AnthropicResponse>(
       'https://api.anthropic.com/v1/messages',
       {
-        model: 'claude-3-opus-20240229',
+        model: 'claude-3-7-sonnet-20250219',
         messages: [
           {
             role: 'user',

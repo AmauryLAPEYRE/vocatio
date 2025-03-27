@@ -1,4 +1,6 @@
 // src/components/layout/AppHeader.tsx
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
 import { useAppStore } from '@/store/appStore';

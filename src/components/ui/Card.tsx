@@ -1,22 +1,58 @@
-// next.config.js
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-    reactStrictMode: true,
-    images: {
-      domains: ['res.cloudinary.com', 'api.canva.com'],
-    },
-    env: {
-      ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
-      CANVA_CLIENT_ID: process.env.CANVA_CLIENT_ID,
-      CANVA_CLIENT_SECRET: process.env.CANVA_CLIENT_SECRET,
-    },
-    // Pour gérer les fichiers PDF et DOCX
-    webpack: (config) => {
-      config.resolve.alias.canvas = false;
-      config.resolve.alias.encoding = false;
-      
-      return config;
-    },
-  };
-  
-  module.exports = nextConfig;
+// src/components/ui/Card.tsx
+'use client';
+
+import React from 'react';
+import { twMerge } from 'tailwind-merge';
+
+interface CardProps {
+  className?: string;
+  children: React.ReactNode;
+}
+
+export const Card: React.FC<CardProps> = ({ className, children }) => {
+  return (
+    <div className={twMerge("bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden", className)}>
+      {children}
+    </div>
+  );
+};
+
+export const CardHeader: React.FC<CardProps> = ({ className, children }) => {
+  return (
+    <div className={twMerge("px-6 py-4 border-b border-gray-200", className)}>
+      {children}
+    </div>
+  );
+};
+
+export const CardTitle: React.FC<CardProps> = ({ className, children }) => {
+  return (
+    <h3 className={twMerge("text-xl font-semibold text-gray-900", className)}>
+      {children}
+    </h3>
+  );
+};
+
+export const CardDescription: React.FC<CardProps> = ({ className, children }) => {
+  return (
+    <p className={twMerge("text-sm text-gray-500 mt-1", className)}>
+      {children}
+    </p>
+  );
+};
+
+export const CardContent: React.FC<CardProps> = ({ className, children }) => {
+  return (
+    <div className={twMerge("px-6 py-4", className)}>
+      {children}
+    </div>
+  );
+};
+
+export const CardFooter: React.FC<CardProps> = ({ className, children }) => {
+  return (
+    <div className={twMerge("px-6 py-4 bg-gray-50 border-t border-gray-200", className)}>
+      {children}
+    </div>
+  );
+};

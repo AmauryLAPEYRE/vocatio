@@ -1,4 +1,6 @@
 // src/components/ui/Progress.tsx
+'use client';
+
 import React from 'react';
 import { twMerge } from 'tailwind-merge';
 
